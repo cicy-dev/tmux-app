@@ -30,6 +30,9 @@ const WebTerminalApp: React.FC = () => {
   const [selectedPane, setSelectedPane] = useState<TmuxPane | null>(null);
   const [isLoadingPanes, setIsLoadingPanes] = useState(false);
   
+  // Ttyd configs for panes (pane_target -> {port, token})
+  const [ttydConfigs, setTtydConfigs] = useState<Record<string, {port: number, token: string}>>({});
+  
   // Command state
   const [commandText, setCommandText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -112,7 +115,11 @@ const WebTerminalApp: React.FC = () => {
           }
         }
         setTmuxPanes(panes);
-        if (panes.length > 0 && !selectedPane) setSelectedPane(panes[0]);
+        if (panes.length > 0 && !selectedPane) {
+          setSelectedPane(panes[0]);
+          // Pre-fetch ttyd config for first pane
+          getTtydConfig(panes[0].target);
+        }
       }
     } catch (error) {
       console.error('Failed to load tmux panes', error);
@@ -156,6 +163,48 @@ const WebTerminalApp: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [token]);
+
+  // Register ttyd config for a pane
+  const getTtydConfig = async (paneTarget: string): Promise<{port: number, token: string} | null> => {
+    if (!token) return null;
+    
+    // Check if we already have the config
+    if (ttydConfigs[paneTarget]) {
+      return ttydConfigs[paneTarget];
+    }
+    
+    try {
+      const res = await fetch('/api/ttyd/register', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ pane_id: paneTarget })
+      });
+      
+      if (!res.ok) return null;
+      
+      const text = await res.text();
+      const data = yaml.load(text) as any;
+      
+      if (data && data.port && data.token) {
+        const config = { port: data.port, token: data.token };
+        setTtydConfigs(prev => ({ ...prev, [paneTarget]: config }));
+        return config;
+      }
+    } catch (error) {
+      console.error('Failed to get ttyd config:', error);
+    }
+    return null;
+  };
+
+  // Handle pane selection
+  const handleSelectPane = async (pane: TmuxPane) => {
+    setSelectedPane(pane);
+    // Pre-fetch ttyd config
+    await getTtydConfig(pane.target);
+  };
 
   // Save command history
   useEffect(() => {
@@ -436,7 +485,7 @@ const WebTerminalApp: React.FC = () => {
               <div className="px-2 py-1 text-xs text-gray-500 font-semibold uppercase">{session.name}</div>
               <div className="space-y-1">
                 {session.panes.map((pane, pIdx) => (
-                  <button key={pIdx} onClick={() => setSelectedPane(pane)} className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all ${selectedPane?.target === pane.target ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'}`}>
+                  <button key={pIdx} onClick={() => handleSelectPane(pane)} className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all ${selectedPane?.target === pane.target ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'}`}>
                     {pane.target}
                   </button>
                 ))}
@@ -451,11 +500,23 @@ const WebTerminalApp: React.FC = () => {
       <div className="flex-1 relative flex flex-col">
         {/* Terminal Area */}
         <div className="flex-1 relative">
-          {tmuxPanes.map((pane) => (
-            <div key={pane.target} style={{ display: selectedPane?.target === pane.target ? 'block' : 'none' }} className="absolute inset-0">
-              <TtydFrame url={`/ttyd/${pane.botName}/?token=${token}`} isInteractingWithOverlay={false} />
-            </div>
-          ))}
+          {tmuxPanes.map((pane) => {
+            const config = ttydConfigs[pane.target];
+            return (
+              <div key={pane.target} style={{ display: selectedPane?.target === pane.target ? 'block' : 'none' }} className="absolute inset-0">
+                {config ? (
+                  <TtydFrame url={`http://host.docker.internal:${config.port}/?token=${config.token}`} isInteractingWithOverlay={false} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <Loader2 size={32} className="mx-auto mb-2 animate-spin" />
+                      <p>Loading terminal...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {tmuxPanes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-gray-500">
