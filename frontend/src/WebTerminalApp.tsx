@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Terminal, Columns, Rows, Maximize2, X, Send, Loader2, CheckCircle, History, Wifi, WifiOff, Menu, RefreshCw, Mic, MicOff, Sparkles, Check, Plus } from 'lucide-react';
-import yaml from 'js-yaml';
 import { TtydFrame } from './components/TtydFrame';
 import { LoginForm } from './components/LoginForm';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
@@ -100,17 +99,21 @@ const WebTerminalApp: React.FC = () => {
     if (!token) return;
     setIsLoadingPanes(true);
     try {
-      const res = await fetch('/api/tmux/tree', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch('/api/tmux/tree', { 
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        } 
+      });
       if (!res.ok) return;
-      const text = await res.text();
-      const data = yaml.load(text) as any;
-        if (data && data.tree) {
+      const data = await res.json();
+      if (data && data.tree) {
         const panes: TmuxPane[] = [];
         const seenTargets = new Set<string>();
         for (const session of data.tree) {
           for (const win of session.windows || []) {
             const pane = win.pane;
-            if (seenTargets.has(pane)) continue; // Skip duplicates
+            if (seenTargets.has(pane)) continue;
             seenTargets.add(pane);
             const parts = pane.split(':');
             if (parts.length === 2) {
@@ -126,11 +129,16 @@ const WebTerminalApp: React.FC = () => {
             }
           }
         }
+        // Clear and set new panes
+        setTmuxPanes([]);
+        setTtydConfigs({});
         setTmuxPanes(panes);
-        if (panes.length > 0 && !selectedPane) {
-          setSelectedPane(panes[0]);
-          // Pre-fetch ttyd config for first pane
-          getTtydConfig(panes[0].target);
+        if (panes.length > 0) {
+          // Auto-select first pane if none selected, or keep existing selection
+          if (!selectedPane || !panes.find(p => p.target === selectedPane.target)) {
+            setSelectedPane(panes[0]);
+            getTtydConfig(panes[0].target);
+          }
         }
       }
     } catch (error) {
@@ -190,15 +198,15 @@ const WebTerminalApp: React.FC = () => {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ pane_id: paneTarget })
       });
       
       if (!res.ok) return null;
       
-      const text = await res.text();
-      const data = yaml.load(text) as any;
+      const data = await res.json();
       
       if (data && data.port && data.token) {
         const config = { port: data.port, token: data.token };
@@ -228,7 +236,8 @@ const WebTerminalApp: React.FC = () => {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           win_name: newWindowName.trim(),
@@ -243,8 +252,8 @@ const WebTerminalApp: React.FC = () => {
         // Refresh panes list
         await loadTmuxPanes();
       } else {
-        const error = await res.text();
-        alert('Failed to create window: ' + error);
+        const errorData = await res.json();
+        alert('Failed to create window: ' + (errorData.detail || errorData.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Failed to create window:', error);
