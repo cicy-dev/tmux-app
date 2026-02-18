@@ -17,6 +17,8 @@ services:
       - "6901:6901"
     command: npx tsx watch src/index.ts
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     build:
@@ -38,3 +40,5 @@ services:
       - server
     command: npm run dev
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

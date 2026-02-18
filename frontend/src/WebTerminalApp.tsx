@@ -87,11 +87,28 @@ const WebTerminalApp: React.FC = () => {
     if (!token) return;
     setIsLoadingPanes(true);
     try {
-      const res = await fetch('/api/tmux-list', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch('/api/tmux/tree', { headers: { 'Authorization': `Bearer ${token}` } });
       if (!res.ok) return;
       const data = await res.json();
-      if (data.success && data.output) {
-        const panes = parseTreOutput(data.output);
+      if (data.tree) {
+        const panes: TmuxPane[] = [];
+        for (const session of data.tree) {
+          for (const win of session.windows || []) {
+            const pane = win.pane;
+            const parts = pane.split(':');
+            if (parts.length === 2) {
+              const [sessionName, rest] = parts;
+              const [winName, paneNum] = rest.split('.');
+              panes.push({ 
+                session: sessionName, 
+                window: String(win.index), 
+                pane: paneNum || '0', 
+                target: pane, 
+                botName: win.name 
+              });
+            }
+          }
+        }
         setTmuxPanes(panes);
         if (panes.length > 0 && !selectedPane) setSelectedPane(panes[0]);
       }

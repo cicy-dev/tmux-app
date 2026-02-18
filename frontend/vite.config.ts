@@ -16,6 +16,10 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
+      '/api/tmux': {
+        target: 'http://host.docker.internal:14444',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://server:6901',
         changeOrigin: true,

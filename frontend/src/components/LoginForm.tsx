@@ -22,13 +22,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
     try {
       // Verify token by calling a protected API endpoint
-      const res = await fetch('/api/type', {
-        method: 'POST',
+      const res = await fetch('/api/bots', {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: '', display: ':1' })
+        }
       });
 
       if (res.ok || res.status === 200) {
