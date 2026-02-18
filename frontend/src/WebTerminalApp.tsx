@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Terminal, Columns, Rows, Maximize2, X, Send, Loader2, CheckCircle, History, Wifi, WifiOff, Menu, RefreshCw, Mic, MicOff, Sparkles, Check } from 'lucide-react';
+import yaml from 'js-yaml';
 import { TtydFrame } from './components/TtydFrame';
 import { LoginForm } from './components/LoginForm';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
@@ -89,8 +90,9 @@ const WebTerminalApp: React.FC = () => {
     try {
       const res = await fetch('/api/tmux/tree', { headers: { 'Authorization': `Bearer ${token}` } });
       if (!res.ok) return;
-      const data = await res.json();
-      if (data.tree) {
+      const text = await res.text();
+      const data = yaml.load(text) as any;
+      if (data && data.tree) {
         const panes: TmuxPane[] = [];
         for (const session of data.tree) {
           for (const win of session.windows || []) {
