@@ -26,6 +26,8 @@ services:
       - ./frontend/src:/app/src:ro
       - ./frontend/index.html:/app/index.html:ro
       - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./frontend/postcss.config.js:/app/postcss.config.js:ro
       - /app/node_modules
     environment:
       - NODE_ENV=development
@@ -34,5 +36,5 @@ services:
       - "16901:16901"
     depends_on:
       - server
-    command: npx vite --host 0.0.0.0 --port 16901
+    command: npm run dev
     restart: unless-stopped
