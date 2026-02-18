@@ -66,8 +66,9 @@ const App: React.FC = () => {
   const voiceModeRef = useRef<'append' | 'direct'>('append');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // iframe URL
-  const iframeUrl = `/ttyd/${BOT_NAME}/?token=${token || ''}`;
+  // iframe URL - use full TTYD URL in token mode
+  const TTYD_BASE = import.meta.env.VITE_TTYD_URL || '';
+  const iframeUrl = `${TTYD_BASE}/ttyd/${BOT_NAME}/?token=${token || ''}`;
 
   // --- Initialization & Persistence ---
   
