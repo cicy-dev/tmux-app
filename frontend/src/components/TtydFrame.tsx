@@ -13,7 +13,7 @@ export const TtydFrame: React.FC<TtydFrameProps> = ({ paneId, token, isInteracti
   const ttydUrl = getTtydUrl(paneId, token);
 
   return (
-    <div className="absolute inset-0 z-0 bg-black overflow-hidden">
+    <div className="absolute inset-0 z-[1] bg-black overflow-hidden">
       <iframe
         src={ttydUrl}
         title="ttyd"

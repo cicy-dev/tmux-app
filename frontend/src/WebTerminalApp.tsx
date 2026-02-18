@@ -18,12 +18,13 @@ export const WebTerminalApp: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [tmuxPanes, setTmuxPanes] = useState<TmuxPane[]>([]);
-  const [ttydConfigs, setTtydConfigs] = useState<Record<string, {name: string, title?: string, port: number, token: string}>>({});
+  const [ttydConfigs, setTtydConfigs] = useState<Record<string, {name: string, title?: string, port: number, token: string, url?: string, workspace?: string, init_script?: string, tg_token?: string, tg_chat_id?: string, tg_enable?: boolean}>>({});
   const [selectedPane, setSelectedPane] = useState<TmuxPane | null>(null);
   const [showPaneList, setShowPaneList] = useState(true);
   const [isLoadingPanes, setIsLoadingPanes] = useState(false);
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingPane, setEditingPane] = useState<{target: string, title: string, url?: string, workspace?: string, init_script?: string, tg_token?: string, tg_chat_id?: string, tg_enable?: boolean} | null>(null);
   
   // Command state - use refs for direct DOM access
   const commandTextRef = useRef('');
@@ -105,7 +106,7 @@ export const WebTerminalApp: React.FC = () => {
       if (!res.ok) return null;
       const data = await res.json();
       if (data?.port && data?.token) {
-        const config = { name: paneTarget, title: data.title || paneTarget, port: data.port, token: data.token };
+        const config = { name: paneTarget, title: data.title || paneTarget, port: data.port, token: data.token, url: data.url };
         setTtydConfigs(prev => ({ ...prev, [paneTarget]: config }));
         return config;
       }
@@ -128,6 +129,70 @@ export const WebTerminalApp: React.FC = () => {
       });
       setTtydConfigs(prev => ({ ...prev, [paneTarget]: { ...prev[paneTarget], title: newTitle } }));
       loadTmuxPanes();
+    }
+  };
+
+  const handleEditPane = async (paneTarget: string, currentTitle: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}`), {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEditingPane({ 
+          target: paneTarget, 
+          title: data.title || currentTitle, 
+          url: data.url,
+          workspace: data.workspace,
+          init_script: data.init_script,
+          tg_token: data.tg_token,
+          tg_chat_id: data.tg_chat_id,
+          tg_enable: data.tg_enable
+        });
+      }
+    } catch (e) {
+      const config = ttydConfigs[paneTarget];
+      setEditingPane({ 
+        target: paneTarget, 
+        title: currentTitle, 
+        url: config?.url,
+        workspace: config?.workspace,
+        init_script: config?.init_script,
+        tg_token: config?.tg_token,
+        tg_chat_id: config?.tg_chat_id,
+        tg_enable: config?.tg_enable
+      });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!token || !editingPane) return;
+    const { target, title, workspace, init_script, tg_token, tg_chat_id, tg_enable } = editingPane;
+    await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(target)}`), {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, workspace, init_script, tg_token, tg_chat_id, tg_enable })
+    });
+    setTtydConfigs(prev => ({ ...prev, [target]: { ...prev[target], title, workspace, init_script, tg_token, tg_chat_id, tg_enable } }));
+    loadTmuxPanes();
+    setEditingPane(null);
+  };
+
+  const handleDeletePane = async () => {
+    if (!token || !editingPane) return;
+    if (!confirm(`Delete pane "${editingPane.target}"? This will close the terminal.`)) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(editingPane.target)}`), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        setEditingPane(null);
+        loadTmuxPanes();
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -232,7 +297,6 @@ export const WebTerminalApp: React.FC = () => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2">
-          <div className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-2 px-2">Panes ({tmuxPanes.length})</div>
           <div className="space-y-1">
             {tmuxPanes.map(pane => {
               const config = ttydConfigs[pane.target];
@@ -242,7 +306,7 @@ export const WebTerminalApp: React.FC = () => {
                   <button onClick={() => { setSelectedPane(pane); getTtydConfig(pane.target); }} className={`flex-1 text-left px-3 py-2 rounded text-sm truncate ${selectedPane?.target === pane.target ? 'text-white' : 'text-gray-300'}`}>
                     {title}
                   </button>
-                  <button onClick={() => handleUpdateTitle(pane.target, title)} className={`p-2 rounded ${selectedPane?.target === pane.target ? 'text-white hover:bg-blue-700' : 'text-gray-500 hover:bg-gray-700'}`} title="Edit title">
+                  <button onClick={(e) => { e.stopPropagation(); handleEditPane(pane.target, title); }} className={`p-2 rounded ${selectedPane?.target === pane.target ? 'text-white hover:bg-blue-700' : 'text-gray-500 hover:bg-gray-700'}`} title="Edit title">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                   </button>
                 </div>
@@ -285,12 +349,89 @@ export const WebTerminalApp: React.FC = () => {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-80 shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-4">Create New Window</h3>
-            <input id="create-dialog-input" type="text" placeholder="Window name (e.g. my_terminal)" className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white mb-3 focus:outline-none focus:border-blue-500" autoFocus />
+            <input id="create-dialog-input" type="text" placeholder="Window name (e.g. my_terminal)" className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white mb-3 focus:outline-none focus:border-blue-500" />
             <input id="create-dialog-title" type="text" placeholder="Title (optional)" className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white mb-4 focus:outline-none focus:border-blue-500" />
             <div className="text-xs text-gray-400 mb-4">Session: worker</div>
             <div className="flex gap-2">
               <button onClick={() => setShowCreateDialog(false)} className="flex-1 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600">Cancel</button>
               <button id="create-dialog-confirm" onClick={handleCreateWindow} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingPane && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg w-[520px] max-h-[85vh] overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 bg-gray-800/50">
+              <h3 className="text-lg font-semibold text-white">Edit Pane</h3>
+              <button onClick={() => setEditingPane(null)} className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto max-h-[calc(85vh-140px)]">
+              <div className="mb-5">
+                <h4 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-3">Basic Info</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-gray-400 text-xs mb-1">Pane ID</label>
+                    <div className="text-white bg-gray-800/50 px-3 py-2 rounded text-sm font-mono">{editingPane.target}</div>
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-xs mb-1">TTYD URL</label>
+                    {editingPane.url ? (
+                      <a href={editingPane.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 bg-gray-800/50 px-3 py-2 rounded text-sm font-mono truncate block hover:underline">
+                        {editingPane.url}
+                      </a>
+                    ) : (
+                      <div className="text-gray-500 bg-gray-800/50 px-3 py-2 rounded text-sm font-mono">N/A</div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-xs mb-1">Title</label>
+                    <input type="text" value={editingPane.title} onChange={(e) => setEditingPane({...editingPane, title: e.target.value})} className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm" placeholder="Enter title..." />
+                  </div>
+                </div>
+              </div>
+              <div className="mb-5">
+                <h4 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-3">Terminal</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-gray-400 text-xs mb-1">Workspace</label>
+                    <input type="text" value={editingPane.workspace || ''} onChange={(e) => setEditingPane({...editingPane, workspace: e.target.value})} className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm" placeholder="e.g. ~/workers/my_app" />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-xs mb-1">Init Script</label>
+                    <textarea value={editingPane.init_script || ''} onChange={(e) => setEditingPane({...editingPane, init_script: e.target.value})} className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm resize-none" rows={4} placeholder="e.g. cd /app&#10;npm start" />
+                  </div>
+                </div>
+              </div>
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-3">Telegram Notifications</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-gray-400 text-xs mb-1">Bot Token</label>
+                    <input type="text" value={editingPane.tg_token || ''} onChange={(e) => setEditingPane({...editingPane, tg_token: e.target.value})} className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm" placeholder="123456:ABC-DEF..." />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-xs mb-1">Chat ID</label>
+                    <input type="text" value={editingPane.tg_chat_id || ''} onChange={(e) => setEditingPane({...editingPane, tg_chat_id: e.target.value})} className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm" placeholder="e.g. -1001234567890" />
+                  </div>
+                  <div className="flex items-center gap-3 py-2">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked={editingPane.tg_enable || false} onChange={(e) => setEditingPane({...editingPane, tg_enable: e.target.checked})} className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <span className="ml-3 text-sm text-gray-300">Enable notifications</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 px-5 py-4 border-t border-gray-700 bg-gray-800/30">
+              <button onClick={handleDeletePane} className="px-4 py-2 bg-red-600/80 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium">Delete</button>
+              <div className="flex-1"></div>
+              <button onClick={() => setEditingPane(null)} className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium">Cancel</button>
+              <button onClick={handleSaveEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors text-sm font-medium">Save Changes</button>
             </div>
           </div>
         </div>
