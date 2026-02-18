@@ -292,12 +292,18 @@ const WebTerminalApp: React.FC = () => {
     });
   }, []);
 
+  const [voiceError, setVoiceError] = useState<string>('');
+  const [voiceDebug, setVoiceDebug] = useState<string>('');
+
   const startVoiceRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+      setVoiceError('Speech recognition not supported. Use Chrome, Edge, or Safari.');
       return;
     }
+
+    setVoiceError('');
+    setVoiceDebug('Initializing...');
 
     try {
       const recognition = new SpeechRecognition();
@@ -307,17 +313,22 @@ const WebTerminalApp: React.FC = () => {
 
       recognition.onstart = () => {
         setIsListening(true);
+        setVoiceDebug('Listening...');
         interimTranscriptRef.current = '';
       };
 
       recognition.onresult = (event: any) => {
         let finalTranscript = '';
+        let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
           }
         }
+        setVoiceDebug(`Heard: ${interimTranscript || finalTranscript || '(waiting...)'}`);
         if (finalTranscript) {
           handleVoiceResult(finalTranscript.trim());
         }
@@ -325,17 +336,21 @@ const WebTerminalApp: React.FC = () => {
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
+        setVoiceError(`Error: ${event.error}`);
+        setVoiceDebug('');
         setIsListening(false);
       };
 
       recognition.onend = () => {
         setIsListening(false);
+        setVoiceDebug('Stopped');
       };
 
       recognitionRef.current = recognition;
       recognition.start();
     } catch (e) {
       console.error('Failed to start speech recognition:', e);
+      setVoiceError(`Failed to start: ${e}`);
       setIsListening(false);
     }
   };
@@ -568,6 +583,29 @@ const WebTerminalApp: React.FC = () => {
             onRecordEnd={() => stopVoiceRecording()}
             isRecordingExternal={isListening}
           />
+          
+          {/* Voice Debug/Error Display */}
+          {(voiceError || voiceDebug) && (
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[70] max-w-md w-full mx-4">
+              {voiceError && (
+                <div className="bg-red-900/90 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-2 shadow-lg backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-400">⚠️</span>
+                    <span className="text-sm">{voiceError}</span>
+                  </div>
+                </div>
+              )}
+              {voiceDebug && !voiceError && (
+                <div className="bg-gray-900/90 border border-gray-700 text-gray-300 px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-400">🎤</span>
+                    <span className="text-sm font-mono">{voiceDebug}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
           <button
             onClick={() => { stopVoiceRecording(); setShowVoiceButton(false); }}
             className="absolute top-4 right-4 z-[70] p-3 bg-blue-600/80 hover:bg-blue-500 text-white rounded-full shadow-lg transition-all backdrop-blur-sm"
