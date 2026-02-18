@@ -229,7 +229,13 @@ export const WebTerminalApp: React.FC = () => {
         body: JSON.stringify({ win_name: winName, session_name: 'worker', dev: false, title: title || undefined })
       });
       if (res.ok) {
+        const data = await res.json();
         await loadTmuxPanes();
+        if (data.pane_id) {
+          const newPane = tmuxPanes.find(p => p.target === data.pane_id) || { target: data.pane_id, session: 'worker', window: winName, pane: '0', botName: winName };
+          setSelectedPane(newPane);
+          getTtydConfig(data.pane_id);
+        }
       } else {
         const err = await res.json();
         alert('Error: ' + (err.detail || err.error || JSON.stringify(err)));
