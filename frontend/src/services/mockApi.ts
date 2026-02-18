@@ -1,11 +1,12 @@
 import { SystemEvent } from '../types';
+import { getApiUrl } from './apiUrl';
 
 const getToken = () => localStorage.getItem('token') || '';
 const authHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() });
 
 // 发送命令到 tmux
 export const sendCommandToTmux = async (command: string, tmuxTarget: string): Promise<{ success: boolean; message: string }> => {
-  const res = await fetch('/api/tmux/send', {
+  const res = await fetch(getApiUrl('/api/tmux/send'), {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ win_id: tmuxTarget, text: command }),
