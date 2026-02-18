@@ -86,8 +86,12 @@ const WebTerminalApp: React.FC = () => {
   const groupPanesBySession = (panes: TmuxPane[]): TmuxSession[] => {
     const sessionMap = new Map<string, TmuxPane[]>();
     panes.forEach(pane => {
+      // Skip duplicates based on target
       if (!sessionMap.has(pane.session)) sessionMap.set(pane.session, []);
-      sessionMap.get(pane.session)!.push(pane);
+      const existing = sessionMap.get(pane.session)!;
+      if (!existing.some(p => p.target === pane.target)) {
+        existing.push(pane);
+      }
     });
     return Array.from(sessionMap.entries()).map(([name, panes]) => ({ name, panes }));
   };
@@ -100,11 +104,14 @@ const WebTerminalApp: React.FC = () => {
       if (!res.ok) return;
       const text = await res.text();
       const data = yaml.load(text) as any;
-      if (data && data.tree) {
+        if (data && data.tree) {
         const panes: TmuxPane[] = [];
+        const seenTargets = new Set<string>();
         for (const session of data.tree) {
           for (const win of session.windows || []) {
             const pane = win.pane;
+            if (seenTargets.has(pane)) continue; // Skip duplicates
+            seenTargets.add(pane);
             const parts = pane.split(':');
             if (parts.length === 2) {
               const [sessionName, rest] = parts;
