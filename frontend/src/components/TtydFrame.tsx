@@ -2,15 +2,16 @@ import React from 'react';
 import { getTtydUrl } from '../services/apiUrl';
 
 interface TtydFrameProps {
-  paneId: string;
-  port: number;
-  token: string;
-  token2: string;
+  paneId?: string;
+  port?: number;
+  token?: string;
+  token2?: string;
+  url?: string;
   isInteractingWithOverlay: boolean;
 }
 
-export const TtydFrame: React.FC<TtydFrameProps> = ({ paneId, token, isInteractingWithOverlay }) => {
-  const ttydUrl = getTtydUrl(paneId, token);
+export const TtydFrame: React.FC<TtydFrameProps> = ({ paneId, port, token, url, isInteractingWithOverlay }) => {
+  const ttydUrl = url || (paneId && token ? getTtydUrl(paneId, token) : '');
 
   return (
     <div className="absolute inset-0 z-[1] bg-black overflow-hidden">
