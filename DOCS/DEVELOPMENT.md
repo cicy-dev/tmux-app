@@ -1,4 +1,4 @@
-# ttyd-proxy-v1 开发 / 测试 / 部署规范
+# ttyd-proxy 开发 / 测试 / 部署规范
 
 ## 1. 前置条件
 
@@ -12,7 +12,7 @@
 ## 2. 开发环境启动
 
 ```bash
-cd ~/projects/ttyd-proxy-v1
+cd ~/projects/ttyd-proxy
 
 # 启动全部服务（server + frontend，含热重载）
 docker compose -f docker-compose.dev.yml up
@@ -131,7 +131,7 @@ bash e2e-test-login.sh
 ### 4.2 手动 API 测试
 
 ```bash
-TOKEN="6568a729f18c9903038ff71e70aa1685888d9e8f4ca34419b9a5d9cf784ffdf1"
+TOKEN="$(cat ~/global.json | python3 -c 'import sys,json; print(json.load(sys.stdin)["api_token"])')"
 
 # 健康检查（无需认证）
 curl http://localhost:6901/api/health
@@ -249,7 +249,7 @@ docker compose -f docker-compose.dev.yml down
 
 ```bash
 # 查看状态
-cd ~/projects/ttyd-proxy-v1
+cd ~/projects/ttyd-proxy
 git status
 
 # 提交（两个服务的修改统一提交到同一个 repo）

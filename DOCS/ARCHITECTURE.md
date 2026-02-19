@@ -1,8 +1,8 @@
-# ttyd-proxy-v1 架构文档
+# ttyd-proxy 架构文档
 
 ## 1. 项目定位
 
-ttyd-proxy-v1 是一个基于浏览器的多终端管理界面，提供：
+ttyd-proxy 是一个基于浏览器的多终端管理界面，提供：
 - 在浏览器中通过 WebSocket 连接 tmux pane（由 ttyd 驱动）
 - 统一的 Token 认证代理层
 - React 前端：创建/重启/删除/捕获 pane，多标签终端视图
@@ -141,7 +141,7 @@ Frontend 更新 iframeKey（强制 iframe 重载）
 ## 5. 目录结构
 
 ```
-ttyd-proxy-v1/
+ttyd-proxy/
 ├── docker-compose.dev.yml    # 开发环境（见下文）
 ├── docker-compose.prod.yml   # 生产环境
 ├── e2e-test.sh               # curl 端到端测试脚本
