@@ -365,7 +365,7 @@ const App: React.FC = () => {
         ...prev,
         panelSize: {
           ...prev.panelSize,
-          height: 160 // Back to default
+          height: 140 // Back to default
         }
       }));
     }
@@ -555,7 +555,7 @@ const App: React.FC = () => {
             title=""
             initialPosition={settings.panelPosition}
             initialSize={settings.panelSize}
-            minSize={{ width: 340, height: 160 }}
+            minSize={{ width: 340, height: 140 }}
             onInteractionStart={() => setIsInteracting(true)}
             onInteractionEnd={() => setIsInteracting(false)}
             onChange={handlePanelChange}
