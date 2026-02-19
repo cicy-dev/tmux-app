@@ -189,11 +189,11 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
 
       {/* Resize Handle */}
       <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end z-50 touch-none"
+        className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize flex items-end justify-end z-50 touch-none"
         onMouseDown={handleStartResize}
         onTouchStart={handleStartResize}
       >
-        <div className="w-2 h-2 border-r-2 border-b-2 border-gray-500 opacity-50"></div>
+        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-gray-500 rounded-bl-sm opacity-60"></div>
       </div>
     </div>
   );
