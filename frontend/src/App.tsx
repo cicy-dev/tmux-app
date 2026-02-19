@@ -42,6 +42,7 @@ const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [paneTitle, setPaneTitle] = useState<string>('');
+  const [paneWorkspace, setPaneWorkspace] = useState<string>('');
   const [readOnly, setReadOnly] = useState(false);
   
   // UI State
@@ -115,6 +116,7 @@ const App: React.FC = () => {
             const data = await res.json();
             const title = data.title || BOT_NAME;
             setPaneTitle(title);
+            setPaneWorkspace(data.workspace || '');
             document.title = title;
           } else {
             setPaneTitle(BOT_NAME);
@@ -560,6 +562,7 @@ const App: React.FC = () => {
       {paneTitle && (
         <div className="absolute top-0 left-0 right-0 h-8 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center justify-between px-3 z-30">
           <span className="text-sm text-gray-300 truncate">{paneTitle}</span>
+          {paneWorkspace && <span className="text-xs text-gray-500 ml-2 truncate">📁 {paneWorkspace}</span>}
           <button
             onClick={() => setReadOnly(!readOnly)}
             className={`p-1 rounded transition-colors ${readOnly ? 'text-red-400 bg-red-500/20' : 'text-gray-400 hover:text-white'}`}
