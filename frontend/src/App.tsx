@@ -15,7 +15,7 @@ const TMUX_TARGET = `master:${BOT_NAME}.0`;
 
 const DEFAULT_SETTINGS: AppSettings = {
   panelPosition: { x: 20, y: 20 },
-  panelSize: { width: 450, height: 160 },  // Increased height for 2-row textarea
+  panelSize: { width: 300, height: 140 },
   forwardEvents: false,
   lastDraft: '',
   showPrompt: true,  // Default to Prompt mode for Telegram
