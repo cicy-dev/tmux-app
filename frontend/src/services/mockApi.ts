@@ -7,7 +7,7 @@ const getToken = () => {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('token') || '';
 };
-const authHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() });
+const authHeaders = () => ({ 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + getToken() });
 
 // 发送命令到 tmux
 export const sendCommandToTmux = async (command: string, tmuxTarget: string): Promise<{ success: boolean; message: string }> => {
