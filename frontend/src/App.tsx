@@ -11,7 +11,7 @@ import { AppSettings, Position, Size } from './types';
 
 // 从 URL query 获取参数
 const BOT_NAME = new URLSearchParams(window.location.search).get('bot_name') || 'cicy_master_xk_bot';
-const TMUX_TARGET = `master:${BOT_NAME}.0`;
+const TMUX_TARGET = `${BOT_NAME}`;
 
 const DEFAULT_SETTINGS: AppSettings = {
   panelPosition: { x: 20, y: 20 },

@@ -217,6 +217,10 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       let port: string;
       let token: string;
 
+      // Check for token in query param first
+      const url = new URL(req.url || '/', 'http://localhost');
+      const queryToken = url.searchParams.get('token');
+
       // Query fast-api for port and token by name
       try {
         const fastApiUrl = `http://127.0.0.1:14444/api/ttyd/by-name/${encodeURIComponent(name)}`;
@@ -230,6 +234,14 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         const data = await response.json() as { port: number; token: string };
         port = String(data.port);
         token = data.token || '';
+
+
+        if (queryToken !== TOKEN) {
+          if (queryToken !== token && !req.url?.endsWith("token")) {
+              return res.writeHead(401);
+          }
+        }
+
       } catch (e) {
         res.writeHead(502);
         return res.end('fast-api error');
@@ -238,14 +250,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       req.url = m[2] || '/';
       delete req.headers['authorization'];
 
-      // Check for token in query param first
-      const url = new URL(req.url || '/', 'http://localhost');
-      const queryToken = url.searchParams.get('token');
-      const useToken = queryToken || token;
-      
-      if (useToken) {
-        req.headers['authorization'] = 'Basic ' + Buffer.from('user:' + useToken).toString('base64');
-      }
+
+      req.headers['authorization'] = 'Basic ' + Buffer.from('user:' + token).toString('base64');
 
       return proxy.web(req, res, { target: 'http://127.0.0.1:' + port });
     }
@@ -374,16 +380,18 @@ server.on('upgrade', (req: http.IncomingMessage, socket: import('stream').Duplex
           const wsPort = String(data.port);
           const wsToken = data.token || '';
 
+          const wsUrl = new URL(req.url || '/', 'http://localhost');
+          const wsQueryToken = wsUrl.searchParams.get('token');
+
+          if (wsQueryToken !== TOKEN) {
+            if (wsQueryToken !== wsToken) {
+                throw new Error("401")
+            }
+          }
           req.url = m[2] || '/';
           delete req.headers['authorization'];
 
-          const wsUrl = new URL(req.url || '/', 'http://localhost');
-          const wsQueryToken = wsUrl.searchParams.get('token');
-          const useToken = wsQueryToken || wsToken;
-
-          if (useToken) {
-            req.headers['authorization'] = 'Basic ' + Buffer.from('user:' + useToken).toString('base64');
-          }
+          req.headers['authorization'] = 'Basic ' + Buffer.from('user:' + wsToken).toString('base64');
 
           proxy.ws(req, socket, head, { target: 'http://127.0.0.1:' + wsPort });
         }).catch(() => socket.destroy());
