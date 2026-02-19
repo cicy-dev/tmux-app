@@ -361,7 +361,7 @@ export const WebTerminalApp: React.FC = () => {
 
       {editingPane && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100]">
-          <div className="bg-gray-900 border border-gray-700 rounded-lg w-[520px] max-h-[85vh] overflow-hidden shadow-2xl">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg w-[90vw] max-h-[90vh] overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 bg-gray-800/50">
               <h3 className="text-lg font-semibold text-white">Edit Pane</h3>
               <button onClick={() => setEditingPane(null)} className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700">
