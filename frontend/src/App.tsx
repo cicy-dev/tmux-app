@@ -41,6 +41,7 @@ const App: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [paneTitle, setPaneTitle] = useState<string>('');
   
   // UI State
   const [isInteracting, setIsInteracting] = useState(false);
@@ -103,6 +104,26 @@ const App: React.FC = () => {
           // No saved settings, use defaults (showPrompt: true)
           setSettings(DEFAULT_SETTINGS);
         }
+        
+        // Fetch pane detail from fast-api
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}`, {
+            headers: { 'Authorization': `Bearer ${urlToken}`, 'Accept': 'application/json' }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const title = data.title || BOT_NAME;
+            setPaneTitle(title);
+            document.title = title;
+          } else {
+            setPaneTitle(BOT_NAME);
+            document.title = BOT_NAME;
+          }
+        } catch (e) {
+          setPaneTitle(BOT_NAME);
+          document.title = BOT_NAME;
+        }
+        
         setIsLoaded(true);
         return;
       }
@@ -534,8 +555,15 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden font-sans">
+      {/* Title Bar */}
+      {paneTitle && (
+        <div className="absolute top-0 left-0 right-0 h-8 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center px-3 z-30">
+          <span className="text-sm text-gray-300 truncate">{paneTitle}</span>
+        </div>
+      )}
+      
       {/* Full Screen Iframe */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0" style={{ top: paneTitle ? '32px' : 0 }}>
         <TtydFrame url={iframeUrl} isInteractingWithOverlay={isInteracting || (!settings.showPrompt && !settings.showVoiceControl)} />
       </div>
 
