@@ -293,6 +293,10 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
   }
 
   if (urlPath === '/api/correctEnglish' && req.method === 'POST') {
+    if (!checkToken(req)) {
+      res.writeHead(401);
+      return res.end('Unauthorized');
+    }
     const body = await readBody(req);
     try {
       const { text } = JSON.parse(body) as CorrectEnglishRequest;
