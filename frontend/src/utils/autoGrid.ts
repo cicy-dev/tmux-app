@@ -23,6 +23,7 @@ interface AutoGridOptions {
   topbarH?: number;
   promptBarH?: number;
   padding?: number;
+  startY?: number;
 }
 
 export function calculateAutoGrid(
@@ -35,6 +36,7 @@ export function calculateAutoGrid(
     topbarH = 32,
     promptBarH = 56,
     padding = 8,
+    startY,
   } = opts;
 
   const N = paneIds.length;
@@ -54,7 +56,6 @@ export function calculateAutoGrid(
     const row = Math.floor(i / cols);
     const col = i % cols;
 
-    // Panes in the last row — center them if fewer than cols
     const panesInThisRow = row === rows - 1 ? N - row * cols : cols;
     const rowOffset =
       panesInThisRow < cols
@@ -62,7 +63,7 @@ export function calculateAutoGrid(
         : 0;
 
     const pos_x = padding + col * (cellW + padding) + rowOffset;
-    const pos_y = topbarH + padding + row * (cellH + padding);
+    const pos_y = startY !== undefined ? startY + padding + row * (cellH + padding) : topbarH + padding + row * (cellH + padding);
 
     layouts.push({
       pane_id: paneIds[i],

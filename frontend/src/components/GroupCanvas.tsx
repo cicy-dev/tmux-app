@@ -291,6 +291,7 @@ export const GroupCanvas: React.FC<Props> = ({
         canvasH,
         topbarH: TOPBAR_H,
         promptBarH: PROMPT_H,
+        startY: 20,
       });
     }
 
@@ -338,6 +339,7 @@ export const GroupCanvas: React.FC<Props> = ({
           canvasH,
           topbarH: TOPBAR_H,
           promptBarH: PROMPT_H,
+          startY: 20,
         });
       }
 
