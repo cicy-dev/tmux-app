@@ -79,7 +79,11 @@ export const GroupCanvas: React.FC<Props> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const [correctedText, setCorrectedText] = useState<string | null>(null);
   const [isCorrecting, setIsCorrecting] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [minimizedPanes, setMinimizedPanes] = useState<Record<string, boolean>>({});
+
+  const togglePaneMinimize = (paneId: string) => {
+    setMinimizedPanes(prev => ({ ...prev, [paneId]: !prev[paneId] }));
+  };
 
   const handleCapturePaneFor = async (paneId: string) => {
     if (isCapturing) return;
@@ -524,18 +528,10 @@ export const GroupCanvas: React.FC<Props> = ({
               ⇅
             </button>
           </div>
-          <button
-            onClick={() => setIsMinimized(v => !v)}
-            className={`p-1 rounded transition-colors ${isMinimized ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-white'} hover:bg-gray-800`}
-            title={isMinimized ? 'Maximize' : 'Minimize'}
-          >
-            {isMinimized ? <Square size={14} /> : <Minus size={14} />}
-          </button>
         </div>
       </div>
 
       {/* Canvas */}
-      {!isMinimized && (
       <div
         ref={canvasRef}
         className="flex-1 relative overflow-hidden"
@@ -633,10 +629,18 @@ export const GroupCanvas: React.FC<Props> = ({
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                       </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); togglePaneMinimize(layout.pane_id); }}
+                        className={`p-0.5 rounded transition-colors ${minimizedPanes[layout.pane_id] ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-white'}`}
+                        title={minimizedPanes[layout.pane_id] ? 'Maximize' : 'Minimize'}
+                      >
+                        {minimizedPanes[layout.pane_id] ? <Square size={11} /> : <Minus size={11} />}
+                      </button>
                     </>
                     )}
                   </div>
                   {/* Terminal */}
+                  {!minimizedPanes[layout.pane_id] && (
                   <div className="flex-1 relative overflow-hidden">
                     {config ? (
                       <TtydFrame
@@ -706,13 +710,13 @@ export const GroupCanvas: React.FC<Props> = ({
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
               </Rnd>
             );
           })
         )}
       </div>
-      )}
 
       {/* Pane Picker */}
       {showPicker && (
