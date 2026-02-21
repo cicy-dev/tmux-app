@@ -7,7 +7,7 @@ import { LoginForm } from './components/LoginForm';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { GroupCanvas } from './components/GroupCanvas';
 import { GroupSidebar } from './components/GroupSidebar';
-import { getApiUrl, getTtydUrl } from './services/apiUrl';
+import { getApiUrl, getTtydUrl, getTtydWebUrl } from './services/apiUrl';
 import { sendCommandToTmux } from './services/mockApi';
 import { Position, Size, TtydGroup, TtydGroupDetail, SidebarMode, MainMode } from './types';
 
@@ -706,7 +706,7 @@ export const WebTerminalApp: React.FC = () => {
             return (
               <div key={pane.target} style={{ display: selectedPane?.target === pane.target ? 'block' : 'none' }} className="absolute inset-0">
                 {config
-                  ? <TtydFrame ref={el => { iframeRefs.current[pane.target] = el; }} url={getTtydUrl(pane.target, config.token)} isInteractingWithOverlay={isInteracting || readOnly} />
+                  ? <TtydFrame ref={el => { iframeRefs.current[pane.target] = el; }} url={`${getTtydWebUrl(pane.target, config.token)}&iframe=1`} isInteractingWithOverlay={isInteracting || readOnly} />
                   : <div className="flex items-center justify-center h-full text-gray-500"><Loader2 className="animate-spin" size={32} /></div>
                 }
               </div>
@@ -723,28 +723,8 @@ export const WebTerminalApp: React.FC = () => {
           )}
         </div>
 
-        {/* Floating command panel - show in iframe (SinglePaneApp) */}
-        {false && selectedPane && !showVoiceControl && (
-          <CommandPanel
-            ref={commandPanelRef}
-            paneTarget={selectedPane.target}
-            title={selectedConfig?.title || selectedPane?.botName || selectedPane?.target || ''}
-            token={token}
-            panelPosition={panelPosition}
-            panelSize={panelSize}
-            readOnly={readOnly}
-            onReadOnlyToggle={() => setReadOnly(v => !v)}
-            onVoiceModeToggle={() => setShowVoiceControl(true)}
-            onInteractionStart={() => setIsInteracting(true)}
-            onInteractionEnd={() => setIsInteracting(false)}
-            onChange={(pos, sz) => { setPanelPosition(pos); setPanelSize(sz); if (selectedPane) savePanelState(selectedPane.target, pos, sz); }}
-            onCapturePane={handleCapturePane}
-            isCapturing={isCapturing}
-          />
-        )}
-
-        {/* Read-only mask — transparent blocker, click to focus command input */}
-        {readOnly && selectedPane && (
+        {/* Read-only mask — hidden */}
+        {false && readOnly && selectedPane && (
           <div
             className="absolute inset-0 z-10 pointer-events-auto cursor-text"
             style={{ top: '32px' }}

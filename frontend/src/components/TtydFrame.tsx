@@ -47,7 +47,7 @@ export const TtydFrame = forwardRef<TtydFrameHandle, TtydFrameProps>(
           ref={iframeRef}
           src={ttydUrl}
           title="ttyd"
-          className={`w-full h-full border-none absolute inset-0 ${isInteractingWithOverlay ? 'pointer-events-none opacity-90' : 'pointer-events-auto opacity-100'}`}
+          className={`w-full h-full border-none absolute inset-0 ${isInteractingWithOverlay ? 'opacity-90' : 'opacity-100'}`}
           allowFullScreen
         />
       </div>

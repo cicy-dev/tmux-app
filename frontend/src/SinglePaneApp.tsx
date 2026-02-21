@@ -35,6 +35,7 @@ declare global {
 }
 
 const App: React.FC = () => {
+  const isInIframe = new URLSearchParams(window.location.search).get('iframe') === '1';
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -278,7 +279,8 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden font-sans">
-      {/* Title bar — always visible */}
+      {/* Title bar — hidden when in iframe */}
+      {!isInIframe && (
       <IframeTopbar
         title={paneTitle || BOT_NAME}
         workspace={paneWorkspace || undefined}
@@ -337,9 +339,10 @@ const App: React.FC = () => {
           </>
         }
       />
+      )}
 
       {/* Full-screen iframe */}
-      <div className="absolute inset-0" style={{ top: '32px' }}>
+      <div className="absolute inset-0" style={{ top: isInIframe ? '0px' : '32px' }}>
         <TtydFrame
           ref={iframeRef}
           key={iframeKey}
@@ -380,6 +383,8 @@ const App: React.FC = () => {
           onInteractionStart={() => setIsInteracting(true)}
           onInteractionEnd={() => setIsInteracting(false)}
           onChange={handlePanelChange}
+          onCapturePane={handleCapturePane}
+          isCapturing={isCapturing}
         />
       )}
 
