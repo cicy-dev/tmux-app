@@ -422,13 +422,13 @@ export const GroupCanvas: React.FC<Props> = ({
                 dragHandleClassName="drag-handle"
                 style={{ zIndex: activePane === layout.pane_id ? 1000 : layout.z_index, overflow: 'hidden' }}
               >
-                <div className={`flex flex-col w-full h-full border rounded overflow-hidden shadow-xl bg-black ${activePane === layout.pane_id ? 'border-purple-500 shadow-lg shadow-purple-900/30' : 'border-gray-700'}`} onClick={() => setActivePane(layout.pane_id)}>
+                <div className={`flex flex-col w-full h-full rounded overflow-hidden shadow-xl bg-black ${activePane === layout.pane_id ? 'ring-2 ring-purple-500 shadow-lg shadow-purple-900/30' : ''}`} onClick={() => setActivePane(layout.pane_id)}>
                   {/* TipBar (drag handle) */}
                   <div
                     className={`drag-handle flex items-center justify-between px-2 h-7 border-b flex-shrink-0 cursor-move select-none transition-colors group/titlebar ${
                       activePane === layout.pane_id
-                        ? 'bg-purple-800 border-purple-600'
-                        : 'bg-gray-900 border-gray-700 hover:bg-gray-800'
+                        ? 'bg-purple-800'
+                        : 'bg-gray-900 hover:bg-gray-800'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
