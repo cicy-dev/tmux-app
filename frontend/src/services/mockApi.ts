@@ -41,10 +41,10 @@ export const sendSystemEvent = async (event: SystemEvent): Promise<void> => {
 };
 
 // 转发快捷键
-export const sendShortcut = async (key: string): Promise<void> => {
-  await fetch('/api/key', {
+export const sendShortcut = async (key: string, target?: string): Promise<void> => {
+  await fetch(getApiUrl('/api/key'), {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ key }),
+    body: JSON.stringify({ key, target }),
   }).catch(() => {});
 };

@@ -179,6 +179,32 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     return json(res, { success: true, panes: Object.keys(paneCache) });
   }
 
+  if (urlPath === '/api/key' && req.method === 'POST') {
+    if (!checkToken(req)) { res.writeHead(401); return res.end('unauthorized'); }
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { key, target } = JSON.parse(body);
+        const paneTarget = target || Object.keys(paneCache)[0];
+        if (!paneTarget) { res.writeHead(400); return res.end('no target'); }
+        
+        const fastRes = await fetch(`${config.fastApiBaseUrl}/api/tmux/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+          body: JSON.stringify({ win_id: paneTarget, keys: key })
+        });
+        const data = await fastRes.json();
+        return json(res, data);
+      } catch (e) {
+        console.error('/api/key error:', (e as Error).message);
+        res.writeHead(500);
+        return res.end('error');
+      }
+    });
+    return;
+  }
+
   if (urlPath.startsWith('/ttyd/')) {
     const m = req.url?.match(/^\/ttyd\/([^/]+)(\/.*)?$/);
     if (m) {

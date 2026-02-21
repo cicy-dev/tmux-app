@@ -7,7 +7,7 @@ import { TtydFrame } from './TtydFrame';
 import { PanePicker } from './PanePicker';
 import { calculateAutoGrid } from '../utils/autoGrid';
 import { getApiUrl, getTtydUrl } from '../services/apiUrl';
-import { sendCommandToTmux } from '../services/mockApi';
+import { sendCommandToTmux, sendShortcut } from '../services/mockApi';
 
 interface TtydConfig {
   name: string;
@@ -64,6 +64,33 @@ export const GroupCanvas: React.FC<Props> = ({
   const [confirmAction, setConfirmAction] = useState<{ type: 'restart' | 'delete'; target: string; title: string } | null>(null);
   const [paneCommands, setPaneCommands] = useState<Record<string, string>>({});
   const [paneSending, setPaneSending] = useState<Record<string, boolean>>({});
+  const [paneHistory, setPaneHistory] = useState<Record<string, string[]>>({});
+  const [paneHistoryIndex, setPaneHistoryIndex] = useState<Record<string, number>>({});
+  const [paneDraft, setPaneDraft] = useState<Record<string, string>>({});
+
+  const SYNC_TIMER_KEY = `group_${group.id}_history_sync`;
+
+  useEffect(() => {
+    const loadedHistory: Record<string, string[]> = {};
+    const loadedDrafts: Record<string, string> = {};
+    layouts.forEach(l => {
+      const h = localStorage.getItem(`cmd_history_${l.pane_id}`);
+      if (h) try { loadedHistory[l.pane_id] = JSON.parse(h); } catch {}
+      const d = localStorage.getItem(`cmd_draft_${l.pane_id}`);
+      if (d) loadedDrafts[l.pane_id] = d;
+    });
+    setPaneHistory(loadedHistory);
+    setPaneDraft(loadedDrafts);
+    setPaneCommands(loadedDrafts);
+  }, [layouts.map(l => l.pane_id).join(',')]);
+
+  const savePaneHistory = (paneId: string, history: string[]) => {
+    localStorage.setItem(`cmd_history_${paneId}`, JSON.stringify(history));
+  };
+
+  const savePaneDraft = (paneId: string, draft: string) => {
+    localStorage.setItem(`cmd_draft_${paneId}`, draft);
+  };
 
   const STORAGE_KEY = `group_${group.id}_state`;
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -110,6 +137,19 @@ export const GroupCanvas: React.FC<Props> = ({
       if (syncTimer.current) clearInterval(syncTimer.current);
     };
   }, [activePane, layoutMode, group.id, token]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      if (e.key === 'Escape' && activePane) {
+        e.preventDefault();
+        sendShortcut('escape', activePane);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activePane]);
 
   // Throttled layout save for single pane
   const scheduleSave = useCallback(
@@ -339,6 +379,12 @@ export const GroupCanvas: React.FC<Props> = ({
   const handleSendToPane = async (paneId: string) => {
     const cmd = paneCommands[paneId]?.trim();
     if (!cmd) return;
+    const newHistory = [cmd, ...(paneHistory[paneId] || []).filter(c => c !== cmd)].slice(0, 50);
+    setPaneHistory(prev => ({ ...prev, [paneId]: newHistory }));
+    savePaneHistory(paneId, newHistory);
+    setPaneHistoryIndex(prev => ({ ...prev, [paneId]: -1 }));
+    setPaneDraft(prev => ({ ...prev, [paneId]: '' }));
+    savePaneDraft(paneId, '');
     setPaneSending(prev => ({ ...prev, [paneId]: true }));
     try {
       await sendCommandToTmux(cmd, paneId);
@@ -450,12 +496,12 @@ export const GroupCanvas: React.FC<Props> = ({
                 minHeight={150}
                 bounds="parent"
                 dragHandleClassName="drag-handle"
-                style={{ zIndex: activePane === layout.pane_id ? 1000 : layout.z_index, overflow: 'hidden', borderRadius: '8px' }}
+                style={{ zIndex: activePane === layout.pane_id ? 1000 : layout.z_index, overflow: 'hidden' }}
               >
-                <div className={`flex flex-col w-full h-full overflow-hidden shadow-xl bg-black ${activePane === layout.pane_id ? 'ring-2 ring-purple-500 border border-purple-500 shadow-lg shadow-purple-900/30' : 'border border-gray-700'}`} onClick={() => setActivePane(layout.pane_id)}>
+                <div className={`flex flex-col w-full h-full overflow-hidden shadow-xl bg-black rounded-t-lg ${activePane === layout.pane_id ? 'ring-2 ring-purple-500 border border-purple-500 shadow-lg shadow-purple-900/30' : 'border border-gray-700'}`} onClick={() => setActivePane(layout.pane_id)}>
                   {/* TipBar (drag handle) */}
                   <div
-                    className={`drag-handle flex items-center justify-between px-2 h-7 border-b flex-shrink-0 cursor-move select-none transition-colors group/titlebar ${
+                    className={`drag-handle flex items-center justify-between px-2 h-7 flex-shrink-0 cursor-move select-none transition-colors group/titlebar ${
                       activePane === layout.pane_id
                         ? 'bg-purple-800'
                         : 'bg-gray-900 hover:bg-gray-800'
@@ -468,7 +514,6 @@ export const GroupCanvas: React.FC<Props> = ({
                     {activePane === layout.pane_id && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditingPane({ target: layout.pane_id, title: paneTitles[layout.pane_id] }); }}
-                      className="p-1 rounded text-gray-300 hover:text-white hover:bg-gray-600 transition-all flex-shrink-0"
                       title="Edit pane"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
@@ -494,8 +539,44 @@ export const GroupCanvas: React.FC<Props> = ({
                       <input
                         type="text"
                         value={paneCommands[layout.pane_id] || ''}
-                        onChange={(e) => setPaneCommands(prev => ({ ...prev, [layout.pane_id]: e.target.value }))}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleSendToPane(layout.pane_id); }}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPaneCommands(prev => ({ ...prev, [layout.pane_id]: v }));
+                          savePaneDraft(layout.pane_id, v);
+                          if ((paneHistoryIndex[layout.pane_id] ?? -1) === -1) {
+                            setPaneDraft(prev => ({ ...prev, [layout.pane_id]: v }));
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            handleSendToPane(layout.pane_id);
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            const history = paneHistory[layout.pane_id] || [];
+                            if (history.length > 0) {
+                              const curIdx = paneHistoryIndex[layout.pane_id] ?? -1;
+                              if (curIdx === -1) {
+                                setPaneDraft(prev => ({ ...prev, [layout.pane_id]: paneCommands[layout.pane_id] || '' }));
+                              }
+                              const newIdx = Math.min(curIdx + 1, history.length - 1);
+                              setPaneHistoryIndex(prev => ({ ...prev, [layout.pane_id]: newIdx }));
+                              setPaneCommands(prev => ({ ...prev, [layout.pane_id]: history[newIdx] }));
+                            }
+                          } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            const history = paneHistory[layout.pane_id] || [];
+                            const curIdx = paneHistoryIndex[layout.pane_id] ?? -1;
+                            if (curIdx > 0) {
+                              const newIdx = curIdx - 1;
+                              setPaneHistoryIndex(prev => ({ ...prev, [layout.pane_id]: newIdx }));
+                              setPaneCommands(prev => ({ ...prev, [layout.pane_id]: history[newIdx] }));
+                            } else if (curIdx === 0) {
+                              setPaneHistoryIndex(prev => ({ ...prev, [layout.pane_id]: -1 }));
+                              setPaneCommands(prev => ({ ...prev, [layout.pane_id]: paneDraft[layout.pane_id] || '' }));
+                            }
+                          }
+                        }}
                         placeholder="cmd..."
                         disabled={paneSending[layout.pane_id]}
                         className="flex-1 bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-500 placeholder:text-gray-600"

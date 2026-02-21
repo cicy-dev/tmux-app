@@ -223,7 +223,7 @@ const App: React.FC = () => {
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      sendShortcut('escape');
+      sendShortcut('escape', TMUX_TARGET);
       return;
     }
     
