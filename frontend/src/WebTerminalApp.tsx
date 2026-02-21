@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Terminal, RefreshCw, Plus, Loader2, Clipboard, Layers, X } from 'lucide-react';
+import { Terminal, RefreshCw, Loader2, Clipboard, Layers, X } from 'lucide-react';
 import { IframeTopbar } from './components/IframeTopbar';
 import { TtydFrame, TtydFrameHandle } from './components/TtydFrame';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
@@ -425,9 +425,6 @@ export const WebTerminalApp: React.FC = () => {
             title="Groups"
           >
             <Layers size={20} />
-          </button>
-          <button onClick={() => setShowCreateDialog(true)} className="p-2 rounded text-green-400 hover:bg-gray-800" title="Create">
-            <Plus size={20} />
           </button>
         </div>
         <div className="flex flex-col items-center gap-2">
