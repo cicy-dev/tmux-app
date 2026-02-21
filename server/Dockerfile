@@ -5,12 +5,14 @@ RUN apk add --no-cache docker-cli
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --production
+RUN npm install
 
 COPY tsconfig.json ./
 COPY src ./src
 
-RUN npx tsc
+RUN ./node_modules/.bin/tsc
+
+RUN npm prune --omit=dev
 
 EXPOSE 6901
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { getTtydUrl } from '../services/apiUrl';
 
 interface TtydFrameProps {
@@ -10,17 +10,36 @@ interface TtydFrameProps {
   isInteractingWithOverlay: boolean;
 }
 
-export const TtydFrame: React.FC<TtydFrameProps> = ({ paneId, port, token, url, isInteractingWithOverlay }) => {
-  const ttydUrl = url || (paneId && token ? getTtydUrl(paneId, token) : '');
+export interface TtydFrameHandle {
+  scrollToBottom: () => void;
+}
 
-  return (
-    <div className="absolute inset-0 z-[1] bg-black overflow-hidden">
-      <iframe
-        src={ttydUrl}
-        title="ttyd"
-        className={`w-full h-full border-none absolute inset-0 ${isInteractingWithOverlay ? 'pointer-events-none opacity-90' : 'pointer-events-auto opacity-100'}`}
-        allowFullScreen
-      />
-    </div>
-  );
-};
+export const TtydFrame = forwardRef<TtydFrameHandle, TtydFrameProps>(
+  ({ paneId, port, token, url, isInteractingWithOverlay }, ref) => {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const ttydUrl = url || (paneId && token ? getTtydUrl(paneId, token) : '');
+
+    useImperativeHandle(ref, () => ({
+      scrollToBottom: () => {
+        try {
+          const win = iframeRef.current?.contentWindow as (Window & { term?: { scrollToBottom?: () => void } }) | null;
+          win?.term?.scrollToBottom?.();
+        } catch {
+          // cross-origin or not ready
+        }
+      },
+    }));
+
+    return (
+      <div className="absolute inset-0 z-[1] bg-black overflow-hidden">
+        <iframe
+          ref={iframeRef}
+          src={ttydUrl}
+          title="ttyd"
+          className={`w-full h-full border-none absolute inset-0 ${isInteractingWithOverlay ? 'pointer-events-none opacity-90' : 'pointer-events-auto opacity-100'}`}
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+);

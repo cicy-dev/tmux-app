@@ -164,7 +164,7 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
       >
         <div className="flex items-center gap-2 text-gray-300 min-w-0 mr-2">
           <GripHorizontal size={20} className="shrink-0" />
-          {title && <span className="text-sm font-medium truncate hidden sm:block">{title}</span>}
+          {title && <span className="text-sm font-medium truncate">{title}</span>}
         </div>
         
         <div className="flex items-center gap-1 md:gap-2 shrink-0">

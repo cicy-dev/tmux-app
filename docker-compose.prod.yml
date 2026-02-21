@@ -11,6 +11,7 @@ services:
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /home/w3c_offical/personal:/home/node/personal:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:6901/api/health"]
       interval: 30s

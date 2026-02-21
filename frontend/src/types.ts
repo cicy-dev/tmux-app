@@ -28,3 +28,36 @@ export interface SystemEvent {
   altKey: boolean;
   metaKey: boolean;
 }
+
+// Group management types
+export interface TtydGroup {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  pane_ids: string[];
+  pane_count: number;
+}
+
+export interface GroupPaneLayout {
+  id: number;
+  pane_id: string;
+  pos_x: number;
+  pos_y: number;
+  width: number;
+  height: number;
+  z_index: number;
+}
+
+export interface TtydGroupDetail {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  panes: GroupPaneLayout[];
+}
+
+export type SidebarMode = 'session' | 'group';
+export type MainMode = 'terminal' | 'group';
