@@ -407,20 +407,18 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Capture output modal */}
+      {/* Capture output modal - full page */}
       {captureOutput !== null && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" style={{ top: '32px' }}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[80vh]">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 flex-shrink-0">
-              <span className="text-sm font-semibold text-white">Pane Output</span>
-              <button onClick={() => setCaptureOutput(null)} className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-            <pre className="flex-1 overflow-auto p-4 text-xs text-green-400 font-mono whitespace-pre-wrap break-all">
-              {captureOutput || '(empty)'}
-            </pre>
+        <div className="fixed inset-0 z-50 flex flex-col bg-black" onClick={() => setCaptureOutput(null)}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 bg-gray-900 flex-shrink-0" onClick={e => e.stopPropagation()}>
+            <span className="text-sm font-semibold text-white">Pane Output</span>
+            <button onClick={() => setCaptureOutput(null)} className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+              <X size={16} />
+            </button>
           </div>
+          <pre className="flex-1 overflow-auto p-4 text-xs text-green-400 font-mono whitespace-pre-wrap break-all bg-black" onClick={e => e.stopPropagation()}>
+            {captureOutput || '(empty)'}
+          </pre>
         </div>
       )}
 
