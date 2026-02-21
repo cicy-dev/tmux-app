@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Rnd } from 'react-rnd';
-import { ArrowLeft, Grid, Move, Users, X, Send, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Grid, Move, Users, X, Send, RefreshCw, Clipboard, ExternalLink, Sparkles, Check, Minus, Square } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { TtydGroupDetail } from '../types';
 import { TtydFrame } from './TtydFrame';
@@ -67,6 +67,61 @@ export const GroupCanvas: React.FC<Props> = ({
   const [paneHistory, setPaneHistory] = useState<Record<string, string[]>>({});
   const [paneHistoryIndex, setPaneHistoryIndex] = useState<Record<string, number>>({});
   const [paneDraft, setPaneDraft] = useState<Record<string, string>>({});
+  const [captureOutput, setCaptureOutput] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [correctedText, setCorrectedText] = useState<string | null>(null);
+  const [isCorrecting, setIsCorrecting] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  const handleCapturePane = async () => {
+    if (!activePane || isCapturing) return;
+    setIsCapturing(true);
+    try {
+      const res = await fetch(getApiUrl('/api/tmux/capture_pane'), {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ pane_id: activePane, start: -200 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCaptureOutput(data.output || '');
+      }
+    } catch (e) { console.error(e); }
+    finally { setIsCapturing(false); }
+  };
+
+  const handleOpenNewWindow = () => {
+    if (!activePane) return;
+    const config = ttydConfigs[activePane];
+    if (config) {
+      window.open(getTtydUrl(activePane, config.token), '_blank');
+    }
+  };
+
+  const handleCorrectEnglish = async () => {
+    const text = paneCommands[activePane || '']?.trim();
+    if (!text || isCorrecting || !token) return;
+    setIsCorrecting(true);
+    try {
+      const res = await fetch(getApiUrl('/api/correctEnglish'), {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (data.success && data.correctedText) {
+        setCorrectedText(data.correctedText);
+      }
+    } catch (e) { console.error(e); }
+    finally { setIsCorrecting(false); }
+  };
+
+  const handleUseCorrectedText = () => {
+    if (!correctedText || !activePane) return;
+    setPaneCommands(prev => ({ ...prev, [activePane]: correctedText }));
+    savePaneDraft(activePane, correctedText);
+    setCorrectedText(null);
+  };
 
   const SYNC_TIMER_KEY = `group_${group.id}_history_sync`;
 
@@ -144,11 +199,13 @@ export const GroupCanvas: React.FC<Props> = ({
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
       if (e.key === 'Escape' && activePane) {
         e.preventDefault();
-        sendShortcut('escape', activePane);
+        e.stopPropagation();
+        sendShortcut('Escape', activePane);
+        return false;
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [activePane]);
 
   // Throttled layout save for single pane
@@ -457,10 +514,42 @@ export const GroupCanvas: React.FC<Props> = ({
               ⇅
             </button>
           </div>
+          <button
+            onClick={handleCorrectEnglish}
+            disabled={!paneCommands[activePane || '']?.trim() || isCorrecting}
+            className="p-1 rounded text-purple-400 hover:text-purple-300 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Correct English with AI"
+          >
+            {isCorrecting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+          </button>
+          <button
+            onClick={handleCapturePane}
+            disabled={isCapturing || !activePane}
+            className="p-1 rounded text-yellow-400 hover:text-yellow-300 hover:bg-gray-800 disabled:opacity-40 transition-colors"
+            title="Capture pane output"
+          >
+            {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
+          </button>
+          <button
+            onClick={handleOpenNewWindow}
+            disabled={!activePane}
+            className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-40 transition-colors"
+            title="Open in new window"
+          >
+            <ExternalLink size={14} />
+          </button>
+          <button
+            onClick={() => setIsMinimized(v => !v)}
+            className={`p-1 rounded transition-colors ${isMinimized ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-white'} hover:bg-gray-800`}
+            title={isMinimized ? 'Maximize' : 'Minimize'}
+          >
+            {isMinimized ? <Square size={14} /> : <Minus size={14} />}
+          </button>
         </div>
       </div>
 
       {/* Canvas */}
+      {!isMinimized && (
       <div
         ref={canvasRef}
         className="flex-1 relative overflow-hidden"
@@ -596,6 +685,18 @@ export const GroupCanvas: React.FC<Props> = ({
           })
         )}
       </div>
+      )}
+
+      {/* Pane Picker */}
+      {showPicker && (
+        <PanePicker
+          panes={tmuxPanes}
+          ttydConfigs={ttydConfigs}
+          currentPaneIds={layouts.map(l => l.pane_id)}
+          onConfirm={handlePickerConfirm}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
 
       {/* Edit pane modal */}
       {editingPane && (
@@ -707,6 +808,57 @@ export const GroupCanvas: React.FC<Props> = ({
                   className="flex-1 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 transition-colors"
                 >
                   Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Capture output dialog */}
+      {captureOutput !== null && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]" onClick={() => setCaptureOutput(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 flex-shrink-0">
+              <span className="text-sm font-semibold text-white">Pane Output: {activePane}</span>
+              <button onClick={() => setCaptureOutput(null)} className="p-1 rounded text-gray-400 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+            <pre className="flex-1 overflow-auto p-4 text-xs text-green-400 font-mono whitespace-pre-wrap break-all">
+              {captureOutput || '(empty)'}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Corrected English dialog */}
+      {correctedText !== null && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]" onClick={() => setCorrectedText(null)}>
+          <div className="bg-gray-900 border border-purple-700/50 rounded-lg shadow-2xl w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-purple-400" />
+                <span className="text-sm font-semibold text-white">Corrected Text</span>
+              </div>
+              <button onClick={() => setCorrectedText(null)} className="p-1 rounded text-gray-400 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-white whitespace-pre-wrap mb-4">{correctedText}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCorrectedText(null)}
+                  className="flex-1 py-2 bg-gray-800 text-gray-300 rounded text-sm hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUseCorrectedText}
+                  className="flex-1 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-500 transition-colors flex items-center justify-center gap-1"
+                >
+                  <Check size={14} /> Use This
                 </button>
               </div>
             </div>

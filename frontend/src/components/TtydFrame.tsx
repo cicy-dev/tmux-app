@@ -42,7 +42,7 @@ export const TtydFrame = forwardRef<TtydFrameHandle, TtydFrameProps>(
     }));
 
     return (
-      <div className="absolute inset-0 z-[1] bg-black overflow-hidden">
+      <div className="absolute inset-0 z-[1] bg-black overflow-hidden mb-9">
         <iframe
           ref={iframeRef}
           src={ttydUrl}
