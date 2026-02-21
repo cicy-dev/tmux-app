@@ -729,7 +729,7 @@ export const GroupCanvas: React.FC<Props> = ({
       <EditPaneDialog
         open={!!editingPane}
         pane={editingPane}
-        mode="simple"
+        mode="full"
         onChange={setEditingPane}
         onClose={() => setEditingPane(null)}
         onSave={handleSavePaneTitle}
