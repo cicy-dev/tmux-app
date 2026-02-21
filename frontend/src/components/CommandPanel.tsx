@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, CheckCircle, Sparkles, History, X, Check, Mic } from 'lucide-react';
+import { Loader2, CheckCircle, Sparkles, History, X, Check, Mic, Clipboard } from 'lucide-react';
 import { FloatingPanel } from './FloatingPanel';
 import { Position, Size } from '../types';
 import { sendCommandToTmux } from '../services/mockApi';
@@ -17,6 +17,8 @@ interface CommandPanelProps {
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
   onChange: (pos: Position, size: Size) => void;
+  onCapturePane?: () => void;
+  isCapturing?: boolean;
 }
 
 export interface CommandPanelHandle {
@@ -35,6 +37,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   onInteractionStart,
   onInteractionEnd,
   onChange,
+  onCapturePane,
+  isCapturing,
 }, ref) => {
   const [promptText, setPromptText] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -111,6 +115,16 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       onChange={onChange}
       headerActions={
         <>
+          {onCapturePane && (
+            <button
+              onClick={onCapturePane}
+              disabled={isCapturing}
+              className="p-1.5 rounded text-yellow-400 hover:bg-gray-700 disabled:opacity-40"
+              title="Capture pane output"
+            >
+              {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
+            </button>
+          )}
           <button
             onClick={onReadOnlyToggle}
             className={`p-1.5 rounded transition-colors ${readOnly ? 'text-red-400 bg-red-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}

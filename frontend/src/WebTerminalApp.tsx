@@ -633,14 +633,6 @@ export const WebTerminalApp: React.FC = () => {
             rightActions={
               <>
                 <button
-                  onClick={handleCapturePane}
-                  disabled={isCapturing || !selectedPane}
-                  className="p-1 rounded text-yellow-400 hover:bg-gray-700 disabled:opacity-40"
-                  title="Capture pane output"
-                >
-                  {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
-                </button>
-                <button
                   onClick={loadTmuxPanes}
                   disabled={isLoadingPanes}
                   className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-40"
@@ -704,6 +696,8 @@ export const WebTerminalApp: React.FC = () => {
             onInteractionStart={() => setIsInteracting(true)}
             onInteractionEnd={() => setIsInteracting(false)}
             onChange={(pos, sz) => { setPanelPosition(pos); setPanelSize(sz); }}
+            onCapturePane={handleCapturePane}
+            isCapturing={isCapturing}
           />
         )}
 
