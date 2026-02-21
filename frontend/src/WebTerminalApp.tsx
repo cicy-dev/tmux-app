@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Terminal, Wifi, WifiOff, RefreshCw, Plus, Loader2, Clipboard, Layers, X } from 'lucide-react';
+import { Terminal, RefreshCw, Plus, Loader2, Clipboard, Layers, X } from 'lucide-react';
 import { IframeTopbar } from './components/IframeTopbar';
 import { TtydFrame, TtydFrameHandle } from './components/TtydFrame';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
@@ -449,10 +449,44 @@ export const WebTerminalApp: React.FC = () => {
         <>
         <div className="h-14 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0">
           <div className="text-white font-semibold">Chats</div>
-          <div className="flex items-center gap-2">
-            {networkStatus === 'offline' ? <WifiOff size={14} className="text-red-400" /> : <Wifi size={14} className={networkStatus === 'excellent' ? 'text-green-400' : networkStatus === 'good' ? 'text-yellow-400' : 'text-red-400'} />}
-            <span className="text-gray-400 font-mono text-xs">{networkLatency !== null ? `${networkLatency}ms` : '...'}</span>
-          </div>
+          <button
+            onClick={async () => {
+              const autoName = `pane_${Date.now()}`;
+              setCreateForm(prev => ({ ...prev, win_name: autoName }));
+              setIsCreating(true);
+              try {
+                const res = await fetch(getApiUrl('/api/tmux/create'), {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                  body: JSON.stringify({ win_name: autoName, session_name: 'worker', dev: false })
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  await loadTmuxPanes();
+                  if (data.pane_id) {
+                    const newPane: TmuxPane = { target: data.pane_id, session: 'worker', window: autoName, pane: '0', botName: autoName };
+                    if (data.ttyd_port) {
+                      const config: TtydConfig = {
+                        name: data.pane_id, title: data.title || data.pane_id,
+                        port: data.ttyd_port, token: token || '', url: data.url,
+                        workspace: data.workspace, init_script: data.init_script,
+                        proxy: data.proxy
+                      };
+                      setTtydConfigs(prev => ({ ...prev, [data.pane_id]: config }));
+                    }
+                    setSelectedPane(newPane);
+                  }
+                }
+              } finally {
+                setIsCreating(false);
+              }
+            }}
+            disabled={isCreating}
+            className="p-1 rounded text-green-400 hover:bg-gray-800 disabled:opacity-50"
+            title="Create pane"
+          >
+            {isCreating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2">
           <div className="space-y-0.5">
