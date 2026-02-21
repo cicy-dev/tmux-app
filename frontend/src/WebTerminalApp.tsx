@@ -183,8 +183,7 @@ export const WebTerminalApp: React.FC = () => {
             target: c.pane_id,
             botName: c.title || windowName,
           };
-        })
-        .sort((a, b) => b.botName.localeCompare(a.botName));
+        });
       setTmuxPanes(panes);
       setSelectedPane(prev => {
         if (prev && panes.find(p => p.target === prev.target)) return prev;
