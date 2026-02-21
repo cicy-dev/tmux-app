@@ -427,7 +427,7 @@ export const GroupCanvas: React.FC<Props> = ({
                   <div
                     className={`drag-handle flex items-center justify-between px-2 h-7 border-b flex-shrink-0 cursor-move select-none transition-colors group/titlebar ${
                       activePane === layout.pane_id
-                        ? 'bg-blue-600 border-blue-500'
+                        ? 'bg-blue-800 border-blue-600'
                         : 'bg-gray-900 border-gray-700 hover:bg-gray-800'
                     }`}
                   >
