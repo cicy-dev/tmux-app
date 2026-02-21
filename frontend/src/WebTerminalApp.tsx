@@ -969,23 +969,21 @@ echo Starting...
 
       {/* Capture output modal */}
       {captureOutput !== null && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]" onClick={() => setCaptureOutput(null)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-lg w-[90vw] max-w-3xl max-h-[80vh] overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700">
-              <span className="text-white font-semibold text-sm">Capture: {selectedPane?.target}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={handleCapturePane} disabled={isCapturing} className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white rounded text-xs disabled:opacity-50">
-                  {isCapturing ? 'Refreshing...' : 'Refresh'}
-                </button>
-                <button onClick={() => setCaptureOutput(null)} className="text-gray-400 hover:text-white p-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              </div>
+        <div className="fixed inset-0 bg-black z-[9999] flex flex-col">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 bg-gray-900">
+            <span className="text-white font-semibold text-sm">Capture: {selectedPane?.target}</span>
+            <div className="flex items-center gap-2">
+              <button onClick={handleCapturePane} disabled={isCapturing} className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white rounded text-xs disabled:opacity-50">
+                {isCapturing ? 'Refreshing...' : 'Refresh'}
+              </button>
+              <button onClick={() => setCaptureOutput(null)} className="text-gray-400 hover:text-white p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
             </div>
-            <pre className="p-4 text-green-400 text-xs font-mono overflow-auto max-h-[calc(80vh-60px)] whitespace-pre-wrap break-all">
-              {captureOutput || '(empty)'}
-            </pre>
           </div>
+          <pre className="flex-1 p-4 text-green-400 text-xs font-mono overflow-auto whitespace-pre-wrap break-all">
+            {captureOutput || '(empty)'}
+          </pre>
         </div>
       )}
     </div>
