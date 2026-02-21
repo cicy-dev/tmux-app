@@ -17,7 +17,7 @@ const TMUX_TARGET = `${BOT_NAME}`;
 const DEFAULT_SETTINGS: AppSettings = {
   panelPosition: { x: Math.max(20, window.innerWidth / 2 - 150), y: Math.max(60, window.innerHeight - 160) },
   panelSize: { width: 300, height: 140 },
-  forwardEvents: false,
+  forwardEvents: true,
   lastDraft: '',
   showPrompt: true,
   showVoiceControl: false,
@@ -219,6 +219,14 @@ const App: React.FC = () => {
     if (!settings.forwardEvents) return;
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+    
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      sendShortcut('escape');
+      return;
+    }
+    
     const mod = e.ctrlKey || e.metaKey;
     if (mod && ['c', 'v', 'a', 'z'].includes(e.key.toLowerCase())) {
       e.preventDefault();

@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { URL } from 'url';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { config } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -90,7 +91,7 @@ const paneCache: Record<string, PaneConfig> = {};
 
 async function loadPaneCache(): Promise<void> {
   try {
-    const res = await fetch('http://127.0.0.1:14444/api/ttyd/list', {
+    const res = await fetch(`${config.fastApiBaseUrl}/api/ttyd/list`, {
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'Accept': 'application/json' }
     });
     if (!res.ok) { console.warn('loadPaneCache: fast-api returned', res.status); return; }
@@ -109,7 +110,7 @@ async function getPaneConfig(name: string): Promise<PaneConfig | null> {
   if (paneCache[name]) return paneCache[name];
   // Cache miss: fetch from fast-api and update cache
   try {
-    const res = await fetch(`http://127.0.0.1:14444/api/ttyd/by-name/${encodeURIComponent(name)}`, {
+    const res = await fetch(`${config.fastApiBaseUrl}/api/ttyd/by-name/${encodeURIComponent(name)}`, {
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'Accept': 'application/json' }
     });
     if (!res.ok) return null;
