@@ -468,7 +468,7 @@ export const GroupCanvas: React.FC<Props> = ({
                     {activePane === layout.pane_id && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditingPane({ target: layout.pane_id, title: paneTitles[layout.pane_id] }); }}
-                      className="opacity-0 group-hover/titlebar:opacity-100 p-1 rounded text-gray-300 hover:text-white hover:bg-gray-600 transition-all flex-shrink-0"
+                      className="p-1 rounded text-gray-300 hover:text-white hover:bg-gray-600 transition-all flex-shrink-0"
                       title="Edit pane"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
