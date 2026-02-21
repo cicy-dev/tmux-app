@@ -56,6 +56,7 @@ export const GroupCanvas: React.FC<Props> = ({
   );
   const [showPicker, setShowPicker] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [activePane, setActivePane] = useState<string | null>(layouts[0]?.pane_id || null);
   const [layoutMode, setLayoutMode] = useState<'horizontal' | 'vertical'>('horizontal');
   const [editingPane, setEditingPane] = useState<{ target: string; title: string } | null>(null);
@@ -123,6 +124,7 @@ export const GroupCanvas: React.FC<Props> = ({
   );
 
   const handleDragStop = (paneId: string, d: { x: number; y: number }) => {
+    setIsDragging(false);
     setLayouts(prev =>
       prev.map(l => l.pane_id === paneId ? { ...l, pos_x: d.x, pos_y: d.y } : l)
     );
@@ -392,7 +394,7 @@ export const GroupCanvas: React.FC<Props> = ({
                 key={layout.pane_id}
                 position={{ x: layout.pos_x, y: layout.pos_y }}
                 size={{ width: layout.width, height: layout.height }}
-                onDragStart={() => setActivePane(layout.pane_id)}
+                onDragStart={() => { setActivePane(layout.pane_id); setIsDragging(true); }}
                 onDragStop={(_e, d) => handleDragStop(layout.pane_id, d)}
                 onResizeStart={() => setIsResizing(true)}
                 onResizeStop={(_e, dir, ref, delta, pos) =>
@@ -437,8 +439,8 @@ export const GroupCanvas: React.FC<Props> = ({
                         <Loader2 size={24} className="animate-spin" />
                       </div>
                     )}
-                    {/* Event mask to prevent iframe from capturing events */}
-                    <div className={`absolute inset-0 z-10 ${isResizing ? 'pointer-events-auto bg-black/30' : 'pointer-events-none'}`} />
+                    {/* Event mask to prevent iframe from capturing events during drag/resize */}
+                    <div className={`absolute inset-0 z-10 ${isResizing || isDragging ? 'pointer-events-auto bg-black/30' : 'pointer-events-none'}`} />
                   </div>
                 </div>
               </Rnd>
