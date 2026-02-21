@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Rnd } from 'react-rnd';
-import { ArrowLeft, Grid, Move, Users, X } from 'lucide-react';
+import { ArrowLeft, Grid, Move, Users, X, Send } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { TtydGroupDetail } from '../types';
 import { TtydFrame } from './TtydFrame';
-import { GlobalPromptBar } from './GlobalPromptBar';
 import { PanePicker } from './PanePicker';
 import { calculateAutoGrid } from '../utils/autoGrid';
 import { getApiUrl, getTtydUrl } from '../services/apiUrl';
+import { sendCommandToTmux } from '../services/mockApi';
 
 interface TtydConfig {
   name: string;
@@ -61,6 +61,8 @@ export const GroupCanvas: React.FC<Props> = ({
   const [layoutMode, setLayoutMode] = useState<'horizontal' | 'vertical'>('horizontal');
   const [editingPane, setEditingPane] = useState<{ target: string; title: string } | null>(null);
   const [editingGroup, setEditingGroup] = useState<{ name: string; description: string } | null>(null);
+  const [paneCommands, setPaneCommands] = useState<Record<string, string>>({});
+  const [paneSending, setPaneSending] = useState<Record<string, boolean>>({});
 
   const STORAGE_KEY = `group_${group.id}_state`;
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -304,6 +306,20 @@ export const GroupCanvas: React.FC<Props> = ({
     } catch (e) { console.error(e); }
   };
 
+  const handleSendToPane = async (paneId: string) => {
+    const cmd = paneCommands[paneId]?.trim();
+    if (!cmd) return;
+    setPaneSending(prev => ({ ...prev, [paneId]: true }));
+    try {
+      await sendCommandToTmux(cmd, paneId);
+      setPaneCommands(prev => ({ ...prev, [paneId]: '' }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPaneSending(prev => ({ ...prev, [paneId]: false }));
+    }
+  };
+
   const paneTitles: Record<string, string> = {};
   layouts.forEach(l => {
     paneTitles[l.pane_id] = ttydConfigs[l.pane_id]?.title || l.pane_id;
@@ -404,7 +420,7 @@ export const GroupCanvas: React.FC<Props> = ({
                 minHeight={150}
                 bounds="parent"
                 dragHandleClassName="drag-handle"
-                style={{ zIndex: activePane === layout.pane_id ? 1000 : layout.z_index }}
+                style={{ zIndex: activePane === layout.pane_id ? 1000 : layout.z_index, overflow: 'hidden' }}
               >
                 <div className="flex flex-col w-full h-full border border-gray-700 rounded overflow-hidden shadow-xl bg-black" onClick={() => setActivePane(layout.pane_id)}>
                   {/* TipBar (drag handle) */}
@@ -441,6 +457,25 @@ export const GroupCanvas: React.FC<Props> = ({
                     )}
                     {/* Event mask to prevent iframe from capturing events during drag/resize */}
                     <div className={`absolute inset-0 z-10 ${isResizing || isDragging ? 'pointer-events-auto bg-black/30' : 'pointer-events-none'}`} />
+                    {/* Per-pane command input */}
+                    <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1 px-1 py-1 bg-gray-900/90 border-t border-gray-700 z-20">
+                      <input
+                        type="text"
+                        value={paneCommands[layout.pane_id] || ''}
+                        onChange={(e) => setPaneCommands(prev => ({ ...prev, [layout.pane_id]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSendToPane(layout.pane_id); }}
+                        placeholder="cmd..."
+                        disabled={paneSending[layout.pane_id]}
+                        className="flex-1 bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-500 placeholder:text-gray-600"
+                      />
+                      <button
+                        onClick={() => handleSendToPane(layout.pane_id)}
+                        disabled={!paneCommands[layout.pane_id]?.trim() || paneSending[layout.pane_id]}
+                        className="p-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded text-white"
+                      >
+                        {paneSending[layout.pane_id] ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </Rnd>
@@ -448,23 +483,6 @@ export const GroupCanvas: React.FC<Props> = ({
           })
         )}
       </div>
-
-      {/* GlobalPromptBar */}
-      <GlobalPromptBar
-        paneIds={layouts.map(l => l.pane_id)}
-        paneTitles={paneTitles}
-      />
-
-      {/* PanePicker modal */}
-      {showPicker && (
-        <PanePicker
-          panes={tmuxPanes}
-          ttydConfigs={ttydConfigs}
-          currentPaneIds={layouts.map(l => l.pane_id)}
-          onConfirm={handlePickerConfirm}
-          onClose={() => setShowPicker(false)}
-        />
-      )}
 
       {/* Edit pane modal */}
       {editingPane && (
