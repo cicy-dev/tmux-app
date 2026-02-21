@@ -24,10 +24,10 @@ ttyd-proxy 是一个 TypeScript 全栈项目，包含：
 
 ```bash
 # 启动开发环境（热重载）
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.yml up --build
 
 # 停止
-docker compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.yml down
 ```
 
 ### 2.2 Server 命令
@@ -237,7 +237,7 @@ bash tests/curl/test_<feature>.sh
 vim server/src/index.ts
 
 # 4. 重启服务 (docker-compose 会自动重载)
-docker compose -f docker-compose.dev.yml logs -f server
+docker compose -f docker-compose.yml logs -f server
 
 # 5. 再次运行测试 (应通过)
 bash tests/curl/test_<feature>.sh
@@ -358,7 +358,7 @@ ttyd-proxy/
 │   ├── TDD.md            # TDD 开发规范
 │   ├── ARCHITECTURE.md
 │   └── DEVELOPMENT.md
-├── docker-compose.dev.yml
+├── docker-compose.yml
 ├── docker-compose.prod.yml
 └── run_tests.sh
 ```

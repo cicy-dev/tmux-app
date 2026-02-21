@@ -17,7 +17,7 @@ echo ""
 echo "--- 服务健康检查 ---"
 if ! curl -sf http://localhost:6901/api/health > /dev/null 2>&1; then
   echo "ERROR: ttyd-proxy server (port 6901) 未运行"
-  echo "  → 启动: docker compose -f docker-compose.dev.yml up -d"
+  echo "  → 启动: docker compose -f docker-compose.yml up -d"
   exit 1
 fi
 if ! curl -sf http://localhost:14444/health > /dev/null 2>&1; then

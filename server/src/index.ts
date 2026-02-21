@@ -8,18 +8,13 @@ import crypto from 'crypto';
 import { URL } from 'url';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { config } from './config.js';
+import { config, API_PATHS } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-function getHostIP(): string {
-  // Use Docker's internal gateway - more reliable than detecting IP
-  return process.env.HOST_IP || 'host.docker.internal';
-}
-
-const HOST_IP = process.env.HOST_IP || getHostIP();
-const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const HOST_IP = config.hostIp;
+const CORS_ORIGIN = config.corsOrigin;
 
 console.log('[INFO] HOST_IP:', HOST_IP);
 
@@ -39,7 +34,7 @@ function getVersion(): string {
   }
 }
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 6901;
+const PORT = config.port;
 
 interface GlobalConfig {
   api_token: string;
@@ -91,7 +86,7 @@ const paneCache: Record<string, PaneConfig> = {};
 
 async function loadPaneCache(): Promise<void> {
   try {
-    const res = await fetch(`${config.fastApiBaseUrl}/api/ttyd/list`, {
+    const res = await fetch(`${config.fastApiBaseUrl}${API_PATHS.TTYD_LIST}`, {
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'Accept': 'application/json' }
     });
     if (!res.ok) { console.warn('loadPaneCache: fast-api returned', res.status); return; }
@@ -110,7 +105,7 @@ async function getPaneConfig(name: string): Promise<PaneConfig | null> {
   if (paneCache[name]) return paneCache[name];
   // Cache miss: fetch from fast-api and update cache
   try {
-    const res = await fetch(`${config.fastApiBaseUrl}/api/ttyd/by-name/${encodeURIComponent(name)}`, {
+    const res = await fetch(`${config.fastApiBaseUrl}${API_PATHS.TTYD_BY_NAME(name)}`, {
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'Accept': 'application/json' }
     });
     if (!res.ok) return null;
@@ -189,7 +184,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
         const paneTarget = target || Object.keys(paneCache)[0];
         if (!paneTarget) { res.writeHead(400); return res.end('no target'); }
         
-        const fastRes = await fetch(`${config.fastApiBaseUrl}/api/tmux/send`, {
+        const fastRes = await fetch(`${config.fastApiBaseUrl}${API_PATHS.TMUX_SEND}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
           body: JSON.stringify({ win_id: paneTarget, keys: key })

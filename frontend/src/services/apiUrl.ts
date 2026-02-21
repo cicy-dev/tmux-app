@@ -2,6 +2,38 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 const TTYD_BASE = import.meta.env.VITE_TTYD_URL || '';
 const TTYD_WEB_BASE = import.meta.env.VITE_TTYD_WEB_URL || '';
 
+export const config = {
+  apiBase: API_BASE,
+  ttydBase: TTYD_BASE,
+  ttydWebBase: TTYD_WEB_BASE,
+};
+
+export const API_PATHS = {
+  TMUX_LIST: '/api/tmux',
+  TMUX_CREATE: '/api/tmux/create',
+  TMUX_SEND: '/api/tmux/send',
+  TMUX_CAPTURE: '/api/tmux/capture_pane',
+  TMUX_PANE: (paneId: string) => `/api/tmux/panes/${encodeURIComponent(paneId)}`,
+  TMUX_PANE_RESTART: (paneId: string) => `/api/tmux/panes/${encodeURIComponent(paneId)}/restart`,
+  
+  TTYD_LIST: '/api/ttyd/list',
+  TTYD_START: (paneId: string) => `/api/ttyd/start/${encodeURIComponent(paneId)}`,
+  TTYD_CONFIG: (paneId: string) => `/api/ttyd/config/${encodeURIComponent(paneId)}`,
+  
+  GROUPS: '/api/groups',
+  GROUP: (groupId: number) => `/api/groups/${groupId}`,
+  GROUP_LAYOUT: (groupId: number) => `/api/groups/${groupId}/layout`,
+  GROUP_STATE: (groupId: number) => `/api/groups/${groupId}/state`,
+  GROUP_PANES: (groupId: number) => `/api/groups/${groupId}/panes`,
+  GROUP_PANE_LAYOUT: (groupId: number, paneId: string) => `/api/groups/${groupId}/panes/${encodeURIComponent(paneId)}/layout`,
+  
+  AUTH_VERIFY: '/api/auth/verify',
+  HEALTH: '/api/health',
+  REFRESH_CACHE: '/api/refresh-cache',
+  KEY: '/api/key',
+  CORRECT_ENGLISH: '/api/correctEnglish',
+};
+
 export const getApiUrl = (path: string) => {
   if (path.startsWith('/ttyd/') && !path.startsWith('/ttyd/status')) {
     return TTYD_BASE + path;

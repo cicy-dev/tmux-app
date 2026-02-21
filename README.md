@@ -6,7 +6,7 @@ TypeScript fullstack project with Docker development environment and hot reload 
 
 ### Development (Hot Reload Enabled)
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.yml up --build
 ```
 
 **Access:**
@@ -43,7 +43,7 @@ This project supports **instant code updates without restarting Docker container
   # Edit server code
   vim server/src/index.ts
   # Server automatically restarts - check logs
-  docker compose -f docker-compose.dev.yml logs -f server
+  docker compose -f docker-compose.yml logs -f server
   ```
 
 #### Frontend (Vite + HMR)
@@ -67,13 +67,13 @@ This project supports **instant code updates without restarting Docker container
 
 ```bash
 # 1. Start development environment
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.yml up -d
 
 # 2. Check services are running
-docker compose -f docker-compose.dev.yml ps
+docker compose -f docker-compose.yml ps
 
 # 3. View logs (optional)
-docker compose -f docker-compose.dev.yml logs -f
+docker compose -f docker-compose.yml logs -f
 
 # 4. Make code changes (hot reload triggers automatically)
 #    - Edit server/src/index.ts → Server restarts
@@ -88,7 +88,7 @@ vim server/package.json  # Change "version": "1.0.4"
 curl http://localhost:6901/api/health  # New version appears
 
 # 7. Stop when done
-docker compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.yml down
 ```
 
 ### When Hot Reload Requires Container Restart
@@ -101,7 +101,7 @@ Hot reload works for code changes. You need to restart containers when:
 
 ```bash
 # Rebuild after dependency changes
-docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.yml up -d --build
 ```
 
 ## Architecture
@@ -132,7 +132,7 @@ docker compose -f docker-compose.dev.yml up -d --build
 │   ├── package.json        # Dependencies
 │   ├── Dockerfile          # Production build
 │   └── Dockerfile.dev      # Development server
-├── docker-compose.dev.yml  # Development config
+├── docker-compose.yml  # Development config
 ├── docker-compose.prod.yml # Production config
 ├── .gitignore
 └── README.md
@@ -175,10 +175,10 @@ docker compose -f docker-compose.dev.yml up -d --build
 ### Hot reload not working
 ```bash
 # Check tsx watch is running
-docker compose -f docker-compose.dev.yml logs server | grep tsx
+docker compose -f docker-compose.yml logs server | grep tsx
 
 # Check file mounts
-docker compose -f docker-compose.dev.yml config
+docker compose -f docker-compose.yml config
 ```
 
 ### Port already in use
@@ -188,10 +188,10 @@ lsof -i :6901
 lsof -i :16901
 
 # Remove orphan containers
-docker compose -f docker-compose.dev.yml down --remove-orphans
+docker compose -f docker-compose.yml down --remove-orphans
 ```
 
 ### 502 Bad Gateway
-- Check server is running: `docker compose -f docker-compose.dev.yml ps`
-- Check server logs: `docker compose -f docker-compose.dev.yml logs server`
+- Check server is running: `docker compose -f docker-compose.yml ps`
+- Check server logs: `docker compose -f docker-compose.yml logs server`
 - Verify port configuration matches between docker-compose and vite.config.ts

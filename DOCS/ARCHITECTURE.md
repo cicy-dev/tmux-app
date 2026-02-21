@@ -142,7 +142,7 @@ Frontend 更新 iframeKey（强制 iframe 重载）
 
 ```
 ttyd-proxy/
-├── docker-compose.dev.yml    # 开发环境（见下文）
+├── docker-compose.yml    # 开发环境（见下文）
 ├── docker-compose.prod.yml   # 生产环境
 ├── e2e-test.sh               # curl 端到端测试脚本
 ├── e2e-test-login.sh         # 登录流程 E2E 测试
