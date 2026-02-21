@@ -438,7 +438,7 @@ export const GroupCanvas: React.FC<Props> = ({
                       </div>
                     )}
                     {/* Event mask to prevent iframe from capturing events */}
-                    <div className={`absolute inset-0 z-10 ${isResizing ? 'pointer-events-auto bg-black/30' : 'pointer-events-auto'}`} />
+                    <div className={`absolute inset-0 z-10 ${isResizing ? 'pointer-events-auto bg-black/30' : 'pointer-events-none'}`} />
                   </div>
                 </div>
               </Rnd>
