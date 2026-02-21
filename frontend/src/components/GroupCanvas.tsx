@@ -81,6 +81,7 @@ export const GroupCanvas: React.FC<Props> = ({
   const [isCorrecting, setIsCorrecting] = useState(false);
   const [minimizedPanes, setMinimizedPanes] = useState<Record<string, boolean>>({});
   const [paneReloadKeys, setPaneReloadKeys] = useState<Record<string, number>>({});
+  const paneRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const togglePaneMinimize = (paneId: string) => {
     setMinimizedPanes(prev => ({ ...prev, [paneId]: !prev[paneId] }));
@@ -89,6 +90,34 @@ export const GroupCanvas: React.FC<Props> = ({
   const handleReloadPane = (paneId: string) => {
     setPaneReloadKeys(prev => ({ ...prev, [paneId]: (prev[paneId] || 0) + 1 }));
   };
+
+  useEffect(() => {
+    const handleWindowBlur = () => {
+      if (isDragging || isResizing) return;
+      const { innerWidth, innerHeight } = window;
+      const x = (window as unknown as { lastMouseX?: number }).lastMouseX || innerWidth / 2;
+      const y = (window as unknown as { lastMouseY?: number }).lastMouseY || innerHeight / 2;
+      for (const [paneId, el] of Object.entries(paneRefs.current)) {
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            setActivePane(paneId);
+            break;
+          }
+        }
+      }
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      (window as unknown as { lastMouseX?: number }).lastMouseX = e.clientX;
+      (window as unknown as { lastMouseY?: number }).lastMouseY = e.clientY;
+    };
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isDragging, isResizing]);
 
   const handleCapturePaneFor = async (paneId: string) => {
     if (isCapturing) return;
@@ -588,9 +617,9 @@ export const GroupCanvas: React.FC<Props> = ({
                 }}
               >
                 <div
+                  ref={el => { if (el) paneRefs.current[layout.pane_id] = el; }}
                   className={`flex flex-col w-full h-full overflow-hidden shadow-xl bg-black rounded-t-lg ${activePane === layout.pane_id ? 'ring-2 ring-purple-500 border border-purple-500 shadow-lg shadow-purple-900/30' : 'border border-gray-700'}`}
-                  onClick={() => setActivePane(layout.pane_id)}
-                  onMouseEnter={() => setActivePane(layout.pane_id)}
+                  onMouseDown={() => setActivePane(layout.pane_id)}
                 >
                   {/* TipBar (drag handle) */}
                   <div
