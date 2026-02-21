@@ -61,6 +61,8 @@ export const WebTerminalApp: React.FC = () => {
     init_script?: string; proxy?: string; tg_token?: string; tg_chat_id?: string; tg_enable?: boolean; active?: boolean;
   } | null>(null);
 
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+
   const [captureOutput, setCaptureOutput] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
 
@@ -561,17 +563,48 @@ export const WebTerminalApp: React.FC = () => {
               })();
               const avatarBg = knownAvatar ? knownAvatar.bg : fallbackBg;
               const avatarContent = knownAvatar ? knownAvatar.icon : <span className="text-base">{fallbackEmoji}</span>;
+              const isEditingTitle = editingTitle === pane.target;
               return (
                 <div key={pane.target} className={`flex items-center gap-1 rounded-lg group ${isSelected ? 'bg-blue-600' : 'hover:bg-gray-800'}`}>
                   <button onClick={() => handleSelectPane(pane)} className="flex-1 text-left px-2 py-2 rounded-lg flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: avatarBg }}>
                       {avatarContent}
                     </div>
-                    <span className={`truncate text-sm ${isSelected ? 'text-white' : 'text-gray-300'}`}>{title}</span>
+                    {isEditingTitle ? (
+                      <input
+                        autoFocus
+                        className="flex-1 bg-gray-700 text-white text-sm px-1 py-0.5 rounded outline-none"
+                        defaultValue={title}
+                        onBlur={async (e) => {
+                          const newTitle = e.target.value.trim();
+                          if (newTitle && newTitle !== title) {
+                            await fetch(getApiUrl(`/api/ttyd/config/${encodeURIComponent(pane.target)}`), {
+                              method: 'PATCH',
+                              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ title: newTitle })
+                            });
+                            setTtydConfigs(prev => ({ ...prev, [pane.target]: { ...prev[pane.target], title: newTitle } }));
+                          }
+                          setEditingTitle(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                          if (e.key === 'Escape') setEditingTitle(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span
+                        className={`truncate text-sm cursor-text ${isSelected ? 'text-white' : 'text-gray-300'}`}
+                        onDoubleClick={(e) => { e.stopPropagation(); setEditingTitle(pane.target); }}
+                      >{title}</span>
+                    )}
                   </button>
+                  {!isEditingTitle && (
                   <button onClick={(e) => { e.stopPropagation(); handleEditPane(pane.target, title); }} className={`p-1.5 rounded ${isSelected ? 'text-white hover:bg-blue-700' : 'text-gray-500 hover:bg-gray-700 opacity-0 group-hover:opacity-100'}`} title="Edit">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                   </button>
+                  )}
                 </div>
               );
             })}
