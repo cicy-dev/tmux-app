@@ -659,11 +659,6 @@ export const WebTerminalApp: React.FC = () => {
                       >{title}</span>
                     )}
                   </button>
-                  {!isEditingTitle && (
-                  <button onClick={(e) => { e.stopPropagation(); handleEditPane(pane.target, title); }} className={`p-1.5 rounded ${isSelected ? 'text-white hover:bg-blue-700' : 'text-gray-500 hover:bg-gray-700 opacity-0 group-hover:opacity-100'}`} title="Edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                  </button>
-                  )}
                 </div>
               );
             })}
@@ -692,6 +687,14 @@ export const WebTerminalApp: React.FC = () => {
             networkStatus={networkStatus}
             rightActions={
               <>
+                <button
+                  onClick={() => selectedPane && handleEditPane(selectedPane.target, selectedConfig?.title || selectedPane.target)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 text-xs transition-colors"
+                  title="Edit pane"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                  Edit
+                </button>
                 <button
                   onClick={() => selectedPane && iframeRefs.current[selectedPane.target]?.reload()}
                   className="flex items-center gap-1 px-2 py-0.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 text-xs transition-colors"
