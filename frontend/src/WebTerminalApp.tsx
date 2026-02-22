@@ -1099,6 +1099,9 @@ echo Starting...
                   <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${sidebarPosition === 'left' ? 'translate-x-0.5' : 'translate-x-6'}`} />
                 </button>
               </div>
+              <div className="text-xs text-gray-500 text-center pt-2">
+                Version 2.5.0
+              </div>
             </div>
             <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-between">
               <div className="text-xs text-gray-500">
