@@ -55,6 +55,10 @@ export const WebTerminalApp: React.FC = () => {
     return (localStorage.getItem('sidebar_position') as 'left' | 'right') || 'left';
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarPosition, setSidebarPosition] = useState<'left'>(() => {
+    return (localStorage.getItem('sidebar_position') as 'left' | 'right') || 'left';
+  });
+  const [showSettings, setShowSettings] = useState(false);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createForm, setCreateForm] = useState({ win_name: '', title: '', proxy: '', init_script: 'pwd' });
@@ -450,9 +454,9 @@ export const WebTerminalApp: React.FC = () => {
   const selectedConfig = selectedPane ? ttydConfigs[selectedPane.target] : null;
 
   return (
-    <div className="relative w-screen h-screen bg-black overflow-hidden font-sans flex">
-      {/* Icon sidebar */}
-      <div className="w-16 h-full bg-gray-900 border-r border-gray-800 flex flex-col justify-between py-4 z-[40] flex-shrink-0">
+    <div className={`relative w-screen h-screen bg-black overflow-hidden font-sans flex ${sidebarPosition === 'right' ? 'flex-row-reverse' : ''}`}>
+      {/* Icon sidebar - always on outer side */}
+      <div className={`w-16 h-full bg-gray-900 flex flex-col justify-between py-4 z-[40] flex-shrink-0 ${sidebarPosition === 'right' ? 'border-l border-gray-800' : 'border-r border-gray-800'}`}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
             <Terminal size={20} className="text-white" />
@@ -498,7 +502,7 @@ export const WebTerminalApp: React.FC = () => {
       </div>
 
       {/* Session/Group sidebar */}
-      <div className={`h-full bg-gray-900 border-r border-gray-800 flex flex-col flex-shrink-0 transition-all duration-300 ${showPaneList ? 'w-60' : 'w-0 overflow-hidden'}`}>
+      <div className={`h-full bg-gray-900 flex flex-col flex-shrink-0 transition-all duration-300 ${showPaneList ? 'w-60' : 'w-0 overflow-hidden'} ${sidebarPosition === 'right' ? 'border-l border-gray-800' : 'border-r border-gray-800'}`}>
         {sidebarMode === 'group' ? (
           <GroupSidebar
             token={token}
