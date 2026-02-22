@@ -510,11 +510,12 @@ export const WebTerminalApp: React.FC = () => {
           <div className="text-white font-semibold">Chats</div>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => loadTmuxPanes()}
-              className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800"
+              onClick={() => { setIsLoadingPanes(true); loadTmuxPanes().finally(() => setIsLoadingPanes(false)); }}
+              disabled={isLoadingPanes}
+              className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50"
               title="Refresh list"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={14} className={isLoadingPanes ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={async () => {
