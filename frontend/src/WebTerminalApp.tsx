@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Terminal, RefreshCw, Loader2, Clipboard, Layers, Plus,X } from 'lucide-react';
+import { Terminal, RefreshCw, Loader2, Clipboard, Layers, Plus,X, Settings, LogOut } from 'lucide-react';
 import { IframeTopbar } from './components/IframeTopbar';
 import { TtydFrame, TtydFrameHandle } from './components/TtydFrame';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel'; 
@@ -51,6 +51,10 @@ export const WebTerminalApp: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<TtydGroupDetail | null>(null);
   const [mainMode, setMainMode] = useState<MainMode>('terminal');
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [sidebarPosition, setSidebarPosition] = useState<'left'>(() => {
+    return (localStorage.getItem('sidebar_position') as 'left' | 'right') || 'left';
+  });
+  const [showSettings, setShowSettings] = useState(false);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createForm, setCreateForm] = useState({ win_name: '', title: '', proxy: '', init_script: 'pwd' });
@@ -487,9 +491,8 @@ export const WebTerminalApp: React.FC = () => {
           </button>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <span className="text-[10px] text-gray-600">v2.5.0</span>
-          <button onClick={() => { localStorage.removeItem('token'); setToken(null); }} className="p-2 rounded text-gray-400 hover:bg-gray-800 hover:text-red-400" title="Logout">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <button onClick={() => setShowSettings(true)} className="p-2 rounded text-gray-400 hover:bg-gray-800 hover:text-white" title="Settings">
+            <Settings size={20} />
           </button>
         </div>
       </div>
@@ -1066,6 +1069,49 @@ echo Starting...
       {toast && (
         <div className="absolute bottom-4 left-4 z-50 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-lg border-2 border-blue-400">
           {toast}
+        </div>
+      )}
+
+      {/* Settings dialog */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]" onClick={() => setShowSettings(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <h3 className="text-sm font-semibold text-white">Settings</h3>
+              <button onClick={() => setShowSettings(false)} className="p-1 rounded text-gray-400 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">Sidebar Position</p>
+                  <p className="text-xs text-gray-500">Show sidebar on left or right</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const newPos = sidebarPosition === 'left' ? 'right' : 'left';
+                    setSidebarPosition(newPos);
+                    localStorage.setItem('sidebar_position', newPos);
+                  }}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${sidebarPosition === 'left' ? 'bg-blue-600' : 'bg-purple-600'}`}
+                >
+                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${sidebarPosition === 'left' ? 'translate-x-0.5' : 'translate-x-6'}`} />
+                </button>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                Logged in as <span className="text-gray-300">{token ? 'User' : 'Guest'}</span>
+              </div>
+              <button
+                onClick={() => { localStorage.removeItem('token'); setToken(null); setShowSettings(false); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded text-red-400 hover:bg-red-900/30 text-sm"
+              >
+                <LogOut size={14} /> Logout
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
