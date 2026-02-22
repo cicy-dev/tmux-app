@@ -59,5 +59,17 @@ export interface TtydGroupDetail {
   panes: GroupPaneLayout[];
 }
 
-export type SidebarMode = 'session' | 'group';
-export type MainMode = 'terminal' | 'group';
+export type SidebarMode = 'session' | 'group' | 'component';
+export type MainMode = 'terminal' | 'group' | 'component';
+
+export interface CustomComponent {
+  id: number;
+  name: string;
+  url: string;
+  description: string;
+  icon: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}

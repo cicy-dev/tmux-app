@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import { Grid, Move, Users, X, Send, Clipboard, ExternalLink, Sparkles, Check, Minus, Square, RefreshCw } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
-import { TtydGroupDetail } from '../types';
+import { TtydGroupDetail, CustomComponent } from '../types';
 import { TtydFrame } from './TtydFrame';
 import { PanePicker } from './PanePicker';
 import { EditPaneDialog, EditPaneData } from './EditPaneDialog';
@@ -34,6 +34,7 @@ interface Props {
   token: string | null;
   ttydConfigs: Record<string, TtydConfig>;
   tmuxPanes: TmuxPane[];
+  customComponents?: CustomComponent[];
   onBack: () => void;
   onGroupUpdated: (group: TtydGroupDetail) => void;
 }
@@ -55,6 +56,7 @@ export const GroupCanvas: React.FC<Props> = ({
   token,
   ttydConfigs,
   tmuxPanes,
+  customComponents = [],
   onBack,
   onGroupUpdated,
 }) => {
@@ -63,6 +65,7 @@ export const GroupCanvas: React.FC<Props> = ({
     group.panes.map(p => ({ ...p }))
   );
   const [showPicker, setShowPicker] = useState(false);
+  const [showComponentPicker, setShowComponentPicker] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [activePane, setActivePane] = useState<string | null>(layouts[0]?.pane_id || null);
@@ -497,6 +500,14 @@ export const GroupCanvas: React.FC<Props> = ({
             Panes
           </button>
           <button
+            onClick={() => setShowComponentPicker(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 text-xs transition-colors"
+            title="Add component"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Components
+          </button>
+          <button
             onClick={handleAutoGrid}
             className="flex items-center gap-1 px-2 py-0.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 text-xs transition-colors"
             title="Auto-grid layout"
@@ -662,10 +673,26 @@ export const GroupCanvas: React.FC<Props> = ({
                     </>
                     )}
                   </div>
-                  {/* Terminal */}
+                  {/* Terminal or Component */}
                   {!minimizedPanes[layout.pane_id] && (
                   <div className="flex-1 relative overflow-hidden">
-                    {config ? (
+                    {layout.pane_id.startsWith('component_') ? (
+                      (() => {
+                        const compId = parseInt(layout.pane_id.replace('component_', ''));
+                        const comp = customComponents.find(c => c.id === compId);
+                        return comp ? (
+                          <iframe
+                            key={layout.pane_id}
+                            src={comp.url}
+                            className="w-full h-full border-0"
+                            title={comp.name}
+                            allow="clipboard-read; clipboard-write"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-gray-600">Component not found</div>
+                        );
+                      })()
+                    ) : config ? (
                       <TtydFrame
                         key={`${layout.pane_id}-${paneReloadKeys[layout.pane_id] || 0}`}
                         url={getTtydUrl(layout.pane_id, config.token)}
@@ -758,6 +785,52 @@ export const GroupCanvas: React.FC<Props> = ({
           onConfirm={handlePickerConfirm}
           onClose={() => setShowPicker(false)}
         />
+      )}
+
+      {/* Component Picker */}
+      {showComponentPicker && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]" onClick={() => setShowComponentPicker(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <h3 className="text-sm font-semibold text-white">Add Component</h3>
+              <button onClick={() => setShowComponentPicker(false)} className="p-1 rounded text-gray-400 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 max-h-80 overflow-y-auto">
+              {customComponents.length === 0 ? (
+                <div className="text-gray-500 text-sm text-center py-4">No components available. Add components in the Components sidebar.</div>
+              ) : (
+                <div className="space-y-2">
+                  {customComponents.map(comp => (
+                    <button
+                      key={comp.id}
+                      onClick={() => {
+                        const newLayout: LocalLayout = {
+                          pane_id: `component_${comp.id}`,
+                          pos_x: 50 + (layouts.length * 20) % 200,
+                          pos_y: 50 + (layouts.length * 20) % 200,
+                          width: 400,
+                          height: 300,
+                          z_index: layouts.length,
+                        };
+                        setLayouts([...layouts, newLayout]);
+                        setShowComponentPicker(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-left"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-400"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                      <div className="flex-1">
+                        <div className="text-white text-sm">{comp.name}</div>
+                        <div className="text-gray-500 text-xs truncate">{comp.url}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Edit pane dialog */}

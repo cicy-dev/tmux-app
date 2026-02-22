@@ -7,7 +7,7 @@ import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
 import { MultiTerminalView } from './components/MultiTerminalView';
 import { sendShortcut } from './services/mockApi';
-import { getApiUrl } from './services/apiUrl';
+import { getApiUrl,TTYD_BASE,API_BASE } from './services/apiUrl';
 import { AppSettings, Position, Size } from './types';
 
 // Read URL query params
@@ -61,7 +61,6 @@ const App: React.FC = () => {
   const commandPanelRef = useRef<CommandPanelHandle>(null);
   const iframeRef = useRef<TtydFrameHandle>(null);
 
-  const TTYD_BASE = import.meta.env.VITE_TTYD_URL || '';
   const iframeUrl = `${TTYD_BASE}/ttyd/${BOT_NAME}/?token=${token || ''}`;
 
   // --- Initialization ---
@@ -86,7 +85,7 @@ const App: React.FC = () => {
         }
 
         try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}`, {
+          const res = await fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}`, {
             headers: { 'Authorization': `Bearer ${urlToken}`, 'Accept': 'application/json' }
           });
           if (res.ok) {
@@ -248,7 +247,7 @@ const App: React.FC = () => {
     if (isCapturing) return;
     setIsCapturing(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/tmux/capture_pane`, {
+      const res = await fetch(`${API_BASE}/api/tmux/capture_pane`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ pane_id: BOT_NAME, start: -200 })
@@ -317,14 +316,14 @@ const App: React.FC = () => {
                 if (!confirm('Restart tmux and ttyd?')) return;
                 setIsRestarting(true);
                 try {
-                  await fetch(`${import.meta.env.VITE_API_URL}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}/restart`, {
+                  await fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}/restart`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
                   });
                   for (let i = 0; i < 30; i++) {
                     await new Promise(r => setTimeout(r, 1000));
                     try {
-                      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ttyd/status/${encodeURIComponent(BOT_NAME)}`, {
+                      const res = await fetch(`${API_BASE}/api/ttyd/status/${encodeURIComponent(BOT_NAME)}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                       });
                       if (res.ok) {

@@ -9,7 +9,7 @@ import { GroupCanvas } from './components/GroupCanvas';
 import { GroupSidebar } from './components/GroupSidebar';
 import { getApiUrl, getTtydUrl, getTtydWebUrl } from './services/apiUrl';
 import { sendCommandToTmux } from './services/mockApi';
-import { Position, Size, TtydGroup, TtydGroupDetail, SidebarMode, MainMode } from './types';
+import { Position, Size, TtydGroup, TtydGroupDetail, SidebarMode, MainMode, CustomComponent } from './types';
 
 interface TmuxPane {
   session: string;
@@ -51,6 +51,12 @@ export const WebTerminalApp: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<TtydGroupDetail | null>(null);
   const [mainMode, setMainMode] = useState<MainMode>('terminal');
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+
+  // --- Custom Components state ---
+  const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
+  const [selectedComponent, setSelectedComponent] = useState<CustomComponent | null>(null);
+  const [showComponentDialog, setShowComponentDialog] = useState(false);
+  const [editingComponent, setEditingComponent] = useState<Partial<CustomComponent>>({});
   const [sidebarPosition, setSidebarPosition] = useState<'left'>(() => {
     return (localStorage.getItem('sidebar_position') as 'left' | 'right') || 'left';
   });
@@ -122,6 +128,7 @@ export const WebTerminalApp: React.FC = () => {
     if (token) {
       loadTmuxPanes();
       loadGroups();
+      loadComponents();
     }
   }, [token]);
 
@@ -151,6 +158,55 @@ export const WebTerminalApp: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setGroups(data.groups || []);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const loadComponents = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(getApiUrl('/api/components'), {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomComponents(data.components || []);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleSaveComponent = async () => {
+    if (!token || !editingComponent.url) return;
+    try {
+      const method = editingComponent.id ? 'PUT' : 'POST';
+      const url = editingComponent.id 
+        ? `/api/components/${editingComponent.id}`
+        : '/api/components';
+      const res = await fetch(getApiUrl(url), {
+        method,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(editingComponent),
+      });
+      if (res.ok) {
+        setShowComponentDialog(false);
+        setEditingComponent({});
+        loadComponents();
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteComponent = async (id: number) => {
+    if (!token) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/components/${id}`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      if (res.ok) {
+        setShowComponentDialog(false);
+        setEditingComponent({});
+        setSelectedComponent(null);
+        loadComponents();
       }
     } catch (e) { console.error(e); }
   };
@@ -489,6 +545,16 @@ export const WebTerminalApp: React.FC = () => {
           >
             <Layers size={20} />
           </button>
+          <button
+            onClick={() => {
+              setSidebarMode('component');
+              setShowPaneList(true);
+            }}
+            className={`p-2 rounded ${sidebarMode === 'component' ? 'bg-green-600 text-white' : 'text-gray-400 hover:bg-gray-800'}`}
+            title="Components"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </button>
         </div>
         <div className="flex flex-col items-center gap-2">
           <button onClick={() => setShowSettings(true)} className="p-2 rounded text-gray-400 hover:bg-gray-800 hover:text-white" title="Settings">
@@ -497,7 +563,7 @@ export const WebTerminalApp: React.FC = () => {
         </div>
       </div>
 
-      {/* Session/Group sidebar */}
+      {/* Session/Group/Component sidebar */}
       <div className={`h-full bg-gray-900 flex flex-col flex-shrink-0 transition-all duration-300 ${showPaneList ? 'w-60' : 'w-0 overflow-hidden'} ${sidebarPosition === 'right' ? 'border-l border-gray-800' : 'border-r border-gray-800'}`}>
         {sidebarMode === 'group' ? (
           <GroupSidebar
@@ -507,6 +573,33 @@ export const WebTerminalApp: React.FC = () => {
             onSelectGroup={handleSelectGroup}
             selectedGroupId={selectedGroupId}
           />
+        ) : sidebarMode === 'component' ? (
+          <div className="flex flex-col h-full">
+            <div className="h-14 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0">
+              <div className="text-white font-semibold">Components</div>
+              <button
+                onClick={() => { setEditingComponent({}); setShowComponentDialog(true); }}
+                className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800"
+                title="Add Component"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 py-2">
+              {customComponents.map(comp => (
+                <div key={comp.id} className={`flex items-center gap-1 px-2 py-1.5 rounded ${selectedComponent?.id === comp.id ? 'bg-green-600' : 'hover:bg-gray-800'}`}>
+                  <button onClick={() => { setSelectedComponent(comp); setMainMode('component'); }} className="flex-1 flex items-center gap-2 text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span className={`truncate text-sm ${selectedComponent?.id === comp.id ? 'text-white' : 'text-gray-300'}`}>{comp.name}</span>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setEditingComponent(comp); setShowComponentDialog(true); }} className="p-1 text-gray-500 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                  </button>
+                </div>
+              ))}
+              {customComponents.length === 0 && <div className="text-gray-600 text-xs text-center py-4">No components</div>}
+            </div>
+          </div>
         ) : (
         <>
         <div className="h-14 border-b border-gray-800 flex items-center justify-between px-4 flex-shrink-0">
@@ -685,8 +778,8 @@ export const WebTerminalApp: React.FC = () => {
       {/* Main area */}
       <div className="flex-1 relative bg-black overflow-hidden">
 
-        {/* Terminal section — always mounted, hidden when viewing a group */}
-        <div className="absolute inset-0" style={{ display: mainMode === 'group' ? 'none' : 'block' }}>
+        {/* Terminal section — always mounted, hidden when viewing a group or component */}
+        <div className="absolute inset-0" style={{ display: mainMode === 'group' || mainMode === 'component' ? 'none' : 'block' }}>
 
         {/* Pane topbar */}
         {selectedPane && (
@@ -793,8 +886,21 @@ export const WebTerminalApp: React.FC = () => {
               token={token}
               ttydConfigs={ttydConfigs}
               tmuxPanes={tmuxPanes}
+              customComponents={customComponents}
               onBack={() => { setMainMode('terminal'); }}
               onGroupUpdated={setSelectedGroup}
+            />
+          </div>
+        )}
+
+        {/* Component iframe section */}
+        {selectedComponent && (
+          <div className="absolute inset-0" style={{ display: mainMode === 'component' ? 'block' : 'none' }}>
+            <iframe
+              src={selectedComponent.url}
+              className="w-full h-full border-0"
+              title={selectedComponent.name}
+              allow="clipboard-read; clipboard-write"
             />
           </div>
         )}
@@ -828,6 +934,59 @@ export const WebTerminalApp: React.FC = () => {
                 {isCreating ? 'Creating...' : 'Create'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Component dialog */}
+      {showComponentDialog && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white mb-4">{editingComponent?.id ? 'Edit Component' : 'Add Component'}</h3>
+            {editingComponent?.id ? (
+              <>
+                <input
+                  type="text" placeholder="Title"
+                  value={editingComponent.name || ''}
+                  onChange={e => setEditingComponent(c => ({ ...c, name: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white mb-3 focus:outline-none focus:border-green-500"
+                  autoFocus
+                />
+                <input
+                  type="text" placeholder="URL"
+                  value={editingComponent.url || ''}
+                  onChange={e => setEditingComponent(c => ({ ...c, url: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white mb-3 focus:outline-none focus:border-green-500"
+                />
+                <input
+                  type="text" placeholder="Description (optional)"
+                  value={editingComponent.description || ''}
+                  onChange={e => setEditingComponent(c => ({ ...c, description: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white mb-4 focus:outline-none focus:border-green-500"
+                />
+              </>
+            ) : (
+              <input
+                type="text" placeholder="URL (e.g., https://example.com)"
+                value={editingComponent.url || ''}
+                onChange={e => {
+                  const url = e.target.value;
+                  let name = '';
+                  try { name = new URL(url).hostname.replace(/^www\./, ''); } catch {}
+                  setEditingComponent(c => ({ ...c, url, name }));
+                }}
+                onKeyDown={e => e.key === 'Enter' && handleSaveComponent()}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white mb-4 focus:outline-none focus:border-green-500"
+                autoFocus
+              />
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => { setShowComponentDialog(false); setEditingComponent({}); }} className="flex-1 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600">Cancel</button>
+              <button onClick={handleSaveComponent} disabled={!editingComponent.url} className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-500 disabled:opacity-50">Save</button>
+            </div>
+            {editingComponent?.id && (
+              <button onClick={() => handleDeleteComponent(editingComponent.id!)} className="w-full mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-500 text-sm">Delete</button>
+            )}
           </div>
         </div>
       )}

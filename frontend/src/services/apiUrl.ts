@@ -1,6 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL || '';
-const TTYD_BASE = import.meta.env.VITE_TTYD_URL || '';
-const TTYD_WEB_BASE = import.meta.env.VITE_TTYD_WEB_URL || '';
+export const API_BASE = "https://g-fast-api.cicy.de5.net"
+export const TTYD_BASE = "https://ttyd-proxy.cicy.de5.net"
+export const TTYD_WEB_BASE = 'https://ttyd-dev.cicy.de5.net';
 
 export const config = {
   apiBase: API_BASE,
