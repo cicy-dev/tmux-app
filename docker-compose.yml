@@ -24,7 +24,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     volumes:
       - ./frontend/src:/app/src:ro
       - ./frontend/index.html:/app/index.html:ro
@@ -36,10 +36,8 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
-      - VITE_API_URL=https://g-fast-api.cicy.de5.net
-      - VITE_TTYD_URL=https://g-ttyd-api.cicy.de5.net
     ports:
-      - "16901:16901"
+      - "6902:6902"
     depends_on:
       - server
     command: npm run dev
