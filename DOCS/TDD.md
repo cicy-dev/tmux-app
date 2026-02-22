@@ -159,7 +159,7 @@ fail() { echo "  ✗ $1: $2"; ((FAIL++)); }
 # 获取当前打开的 ttyd-proxy 窗口 ID
 # 用法: WIN_ID=$(get_win_id)
 get_win_id() {
-  local url="${TTYD_PROXY_URL:-http://localhost:16901}"
+  local url="${TTYD_PROXY_URL:-http://localhost:6902}"
   $CURL_RPC get_windows 2>/dev/null \
     | python3 -c "
 import sys, json
@@ -251,7 +251,7 @@ summarize() {
 # tests/e2e/test_<feature>.sh
 source "$(dirname "$0")/lib.sh"
 
-FRONTEND_URL=${TTYD_PROXY_URL:-http://localhost:16901}
+FRONTEND_URL=${TTYD_PROXY_URL:-http://localhost:6902}
 
 echo "=== E2E: $(basename $0) ==="
 
