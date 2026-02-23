@@ -6,6 +6,7 @@ import { IframeTopbar } from './components/IframeTopbar';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
 import { MultiTerminalView } from './components/MultiTerminalView';
+import { EditPaneDialog, EditPaneData } from './components/EditPaneDialog';
 import { sendShortcut } from './services/mockApi';
 import { getApiUrl,TTYD_BASE,API_BASE } from './services/apiUrl';
 import { AppSettings, Position, Size } from './types';
@@ -54,7 +55,7 @@ const App: React.FC = () => {
 
   const [isInteracting, setIsInteracting] = useState(false);
   const [multiTerminalMode, setMultiTerminalMode] = useState(false);
-  const [editingPane, setEditingPane] = useState<Record<string, string> | null>(null);
+  const [editingPane, setEditingPane] = useState<EditPaneData | null>(null);
   const [isSavingPane, setIsSavingPane] = useState(false);
 
   const [networkLatency, setNetworkLatency] = useState<number | null>(null);
@@ -274,10 +275,15 @@ const App: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setEditingPane({
+          target: BOT_NAME,
           title: data.title || '',
           workspace: data.workspace || '',
+          active: data.active,
           init_script: data.init_script || '',
           proxy: data.proxy || '',
+          tg_enable: data.tg_enable,
+          tg_token: data.tg_token || '',
+          tg_chat_id: data.tg_chat_id || '',
         });
       }
     } catch (e) { console.error('Failed to load pane details:', e); }
@@ -455,46 +461,14 @@ const App: React.FC = () => {
       )}
 
       {/* Edit pane dialog - full page */}
-      {editingPane && (
-        <div className="fixed inset-0 bg-black z-[9999] flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 bg-gray-900 flex-shrink-0">
-            <div>
-              <span className="text-sm font-semibold text-white">Edit Pane</span>
-              <span className="text-xs text-gray-500 font-mono ml-2">{BOT_NAME}</span>
-            </div>
-            <button onClick={() => setEditingPane(null)} className="p-1 rounded text-gray-400 hover:text-white"><X size={16} /></button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Title</label>
-              <input type="text" value={editingPane.title} onChange={e => setEditingPane({ ...editingPane, title: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500" placeholder="Pane title" autoFocus />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Workspace</label>
-              <input type="text" value={editingPane.workspace} onChange={e => setEditingPane({ ...editingPane, workspace: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500" placeholder="/home/user/project" />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Init Script</label>
-              <textarea value={editingPane.init_script} onChange={e => setEditingPane({ ...editingPane, init_script: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 resize-none" rows={6} placeholder="pwd&#10;# sleep:2&#10;# key:t" />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">HTTP Proxy</label>
-              <input type="text" value={editingPane.proxy} onChange={e => setEditingPane({ ...editingPane, proxy: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500" placeholder="http://proxy:8080" />
-            </div>
-          </div>
-          <div className="flex gap-2 px-4 py-3 border-t border-gray-700 flex-shrink-0">
-            <div className="flex-1" />
-            <button onClick={() => setEditingPane(null)} className="px-4 py-2 bg-gray-800 text-gray-300 rounded text-sm hover:bg-gray-700">Cancel</button>
-            <button onClick={handleSavePane} disabled={isSavingPane} className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 disabled:opacity-50">
-              {isSavingPane ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </div>
-      )}
+      <EditPaneDialog
+        open={!!editingPane}
+        pane={editingPane}
+        mode="full"
+        onChange={setEditingPane}
+        onClose={() => setEditingPane(null)}
+        onSave={handleSavePane}
+      />
 
       {/* Capture output modal - full page */}
       {captureOutput !== null && (
