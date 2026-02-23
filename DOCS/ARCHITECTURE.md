@@ -194,14 +194,7 @@ Server: 代理请求
 ```
 ttyd-proxy/
 ├── docker-compose.yml    # 开发环境配置
-├── server/
-│   ├── src/
-│   │   ├── index.ts      # 主代理逻辑
-│   │   └── config.ts     # 配置和 API 路径
-│   ├── package.json      # 依赖：http-proxy, tsx, typescript
-│   ├── tsconfig.json     # target: ES2022, module: ESNext
-│   ├── Dockerfile        # 生产镜像
-│   └── Dockerfile.dev    # 开发镜像（tsx watch）
+
 ├── frontend/
 │   ├── src/
 │   │   ├── main.tsx      # 入口

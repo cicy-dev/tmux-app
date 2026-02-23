@@ -42,7 +42,7 @@ const App: React.FC = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [paneTitle, setPaneTitle] = useState<string>('');
   const [paneWorkspace, setPaneWorkspace] = useState<string>('');
-  const [readOnly, setReadOnly] = useState(true);
+  const [readOnly, setReadOnly] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [captureOutput, setCaptureOutput] = useState<string | null>(null);

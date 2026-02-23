@@ -9,5 +9,6 @@ export default defineConfig({
     port: 6902,
     strictPort: true,
     allowedHosts: true,
+    cors: true,
   },
 });
