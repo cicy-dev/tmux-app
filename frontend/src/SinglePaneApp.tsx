@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [userPerms, setUserPerms] = useState<string[]>([]);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [paneTitle, setPaneTitle] = useState<string>('');
   const [paneWorkspace, setPaneWorkspace] = useState<string>('');
@@ -69,6 +70,8 @@ const App: React.FC = () => {
   const iframeRef = useRef<TtydFrameHandle>(null);
 
   const iframeUrl = `${TTYD_BASE}/ttyd/${BOT_NAME}/?token=${token || ''}`;
+
+  const hasPermission = (perm: string) => userPerms.includes(perm);
 
   // --- Initialization ---
   useEffect(() => {
@@ -143,6 +146,24 @@ const App: React.FC = () => {
     };
     init();
   }, []);
+
+  // Verify token and get permissions
+  useEffect(() => {
+    if (!token) return;
+    
+    fetch(`${API_BASE}/api/auth/verify-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.valid && data.perms) {
+          setUserPerms(data.perms);
+        }
+      })
+      .catch(err => console.error('Failed to verify token:', err));
+  }, [token]);
 
   useEffect(() => {
     if (isLoaded) localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -482,7 +503,7 @@ const App: React.FC = () => {
 
 
       {/* Floating command panel */}
-      {settings.showPrompt && (
+      {settings.showPrompt && hasPermission('prompt') && (
         <CommandPanel
           ref={commandPanelRef}
           paneTarget={TMUX_TARGET}
