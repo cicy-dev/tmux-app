@@ -600,6 +600,20 @@ const App: React.FC = () => {
               <button onClick={handleCapturePane} disabled={isCapturing} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs disabled:opacity-50">
                 {isCapturing ? '...' : 'Refresh'}
               </button>
+              <button 
+                onClick={() => {
+                  const blob = new Blob([captureOutput || ''], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${BOT_NAME}_capture_${Date.now()}.txt`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-3 py-1 rounded bg-green-600 hover:bg-green-500 text-white text-xs"
+              >
+                Export
+              </button>
               <button onClick={() => setCaptureOutput(null)} className="px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs">Close</button>
             </div>
           </div>
