@@ -20,7 +20,7 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   title,
   initialPosition = { x: 50, y: 50 },
   initialSize = { width: 357, height: 166 },
-  minSize = { width: 240, height: 120 },
+  minSize = { width: 357, height: 166 },
   onInteractionStart,
   onInteractionEnd,
   onChange,
