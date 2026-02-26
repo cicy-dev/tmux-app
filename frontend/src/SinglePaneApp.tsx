@@ -74,7 +74,7 @@ const App: React.FC = () => {
 
   const iframeUrl = `${TTYD_BASE}/ttyd/${BOT_NAME}/?token=${token || ''}`;
 
-  const hasPermission = (perm: string) => userPerms.includes(perm);
+  const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
 
   // --- Initialization ---
   useEffect(() => {
@@ -569,7 +569,7 @@ const App: React.FC = () => {
       )}
 
       {settings.showVoiceControl && hasPermission('prompt') && (
-        <div style={{position:"fixed",zIndex:1111111,top:0,right:0,left:0,height:32}}>
+        <div style={{position:"fixed",zIndex:1111111,top:0,right:0,left:0,height:32,pointerEvents:"none"}}><div style={{pointerEvents:"auto",display:"inline-block"}}>
         <VoiceFloatingButton
           initialPosition={settings.voiceButtonPosition}
           onPositionChange={pos => setSettings(prev => ({ ...prev, voiceButtonPosition: pos }))}
@@ -578,7 +578,7 @@ const App: React.FC = () => {
           isRecordingExternal={isListening && voiceModeRef.current === 'direct'}
           disabled={agentStatus !== 'idle'}
         />
-        </div>
+        </div></div>
       )}
 
       {/* Edit pane dialog - full page */}
