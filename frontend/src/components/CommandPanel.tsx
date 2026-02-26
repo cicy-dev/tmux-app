@@ -83,7 +83,17 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showArrows, setShowArrows] = useState(false);
+  const sendQueueRef = useRef<string[]>([]);
+  const [queueLen, setQueueLen] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [currentPos, setCurrentPos] = useState(panelPosition);
+  const [currentSize, setCurrentSize] = useState(panelSize);
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    setCurrentPos(panelPosition);
+    setCurrentSize(panelSize);
+  }, [panelPosition, panelSize]);
 
   useImperativeHandle(ref, () => ({
     focusTextarea: () => { setTimeout(() => textareaRef.current?.focus(), 50); },
@@ -101,6 +111,12 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     setTempDraft('');
     setPromptText('');
     saveDraft('');
+    if (!canSend) {
+      // 队列模式：agent 忙时排队
+      sendQueueRef.current.push(cmd);
+      setQueueLen(sendQueueRef.current.length);
+      return;
+    }
     setIsSending(true);
     setSendSuccess(false);
     try {
@@ -112,7 +128,20 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       setIsSending(false);
       setTimeout(() => textareaRef.current?.focus(), 50);
     }
-  }, [promptText, paneTarget]);
+  }, [promptText, paneTarget, canSend]);
+
+  // 队列自动发送：agent idle 时发送排队的命令
+  useEffect(() => {
+    if (!canSend || sendQueueRef.current.length === 0) return;
+    const queued = sendQueueRef.current.join('\n');
+    sendQueueRef.current = [];
+    setQueueLen(0);
+    setIsSending(true);
+    sendCommandToTmux(queued, paneTarget)
+      .then(() => { setSendSuccess(true); setTimeout(() => setSendSuccess(false), 2000); })
+      .catch(console.error)
+      .finally(() => { setIsSending(false); });
+  }, [canSend, paneTarget]);
 
   const handleCorrectEnglish = async () => {
     if (!promptText.trim() || isCorrectingEnglish || !token) return;
@@ -143,14 +172,19 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   };
 
   return (
-    <FloatingPanel
-      title={title}
-      initialPosition={panelPosition}
-      initialSize={panelSize}
+    <>
+      <FloatingPanel
+        title={title}
+        initialPosition={panelPosition}
+        initialSize={panelSize}
       minSize={{ width: 340, height: 140 }}
       onInteractionStart={onInteractionStart}
       onInteractionEnd={onInteractionEnd}
-      onChange={onChange}
+      onChange={(pos, size) => {
+        setCurrentPos(pos);
+        setCurrentSize(size);
+        onChange(pos, size);
+      }}
       headerActions={
         <>
           {onCapturePane && (
@@ -164,6 +198,15 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
             </button>
           )}
           <button
+            onClick={handleCorrectEnglish}
+            disabled={!promptText.trim() || isCorrectingEnglish}
+            className="p-1.5 rounded text-purple-400 hover:bg-gray-700 disabled:opacity-40 transition-colors"
+            title="Correct English with AI"
+          >
+            {isCorrectingEnglish ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+          </button>
+          <button
+            type="button"
             onClick={() => setShowHistory(v => !v)}
             className={`p-1.5 rounded transition-colors ${showHistory ? 'text-orange-400 bg-orange-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
             title="Command history"
@@ -194,6 +237,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                 saveDraft(e.target.value);
                 if (historyIndex === -1) setTempDraft(e.target.value);
               }}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
@@ -231,17 +276,17 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               }}
               placeholder="Type command..."
               className="w-full h-full bg-black/50 text-white rounded-lg border border-gray-700 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm shadow-inner placeholder:text-gray-600 placeholder:opacity-50"
-              disabled={isSending || !canSend}
+              disabled={isSending}
             />
           </div>
-          {showArrows && (
+          {showArrows && !isFocused && (
             <div className="flex items-center justify-center gap-1.5 mt-1.5">
               {[
                 { label: '←', key: 'Left' },
                 { label: '↓', key: 'Down' },
                 { label: '↑', key: 'Up' },
                 { label: '→', key: 'Right' },
-                { label: '⏎', key: 'Enter' },
+                { label: 'Enter', key: 'Enter', multiline: true },
                 { label: 'Esc', key: 'escape' },
                 { label: 'C-c', key: 'ctrl+c' },
               ].map(b => (
@@ -250,8 +295,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                   const k = keyMap[b.key] || b.key;
                   await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: k }) });
                 }}
-                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors shadow"
-                >{b.label}</button>
+                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors shadow flex items-center justify-center"
+                >{(b as any).multiline ? <div className="flex flex-col items-center leading-tight"><span className="text-xs">Enter</span></div> : b.label}</button>
               ))}
             </div>
           )}
@@ -260,6 +305,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               <span className={`w-2 h-2 rounded-full ${agentStatus === 'idle' ? 'bg-green-400' : agentStatus === 'wait_auth' ? 'bg-yellow-400 animate-pulse' : agentStatus === 'compacting' ? 'bg-blue-400 animate-pulse' : agentStatus === 'wait_startup' ? 'bg-gray-400' : 'bg-cyan-400 animate-pulse'}`} />
               <span className="text-gray-500 capitalize">{agentStatus}</span>
               {contextUsage != null && <span className={contextUsage >= 80 ? 'text-red-400' : contextUsage >= 50 ? 'text-yellow-400' : 'text-gray-600'}>· {contextUsage}%</span>}
+              {queueLen > 0 && <span className="text-orange-400 animate-pulse">· Q:{queueLen}</span>}
             </div>
             <div className="flex gap-1">
               <button type="button" onClick={() => setShowArrows(v => !v)}
@@ -286,17 +332,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                 <option value="n">No (n)</option>
               </select>
               <button
-                type="button"
-                onClick={handleCorrectEnglish}
-                disabled={!promptText.trim() || isCorrectingEnglish}
-                className="p-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                title="Correct English with AI"
-              >
-                {isCorrectingEnglish ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              </button>
-              <button
                 type="submit"
-                disabled={!promptText.trim() || isSending || !canSend}
+                disabled={!promptText.trim() || isSending}
                 className="p-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 {isSending ? <Loader2 size={14} className="animate-spin" /> : sendSuccess ? <CheckCircle size={14} className="text-green-400" /> : (
@@ -307,58 +344,106 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
           </div>
 
           {correctedText && (
-            <div className="mt-2 p-3 bg-purple-900/30 border border-purple-700 rounded-lg">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={14} className="text-purple-400 flex-shrink-0" />
-                  <span className="text-xs text-purple-300 font-medium">Corrected Text:</span>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setCorrectedText('')}>
+              <div className="bg-gray-900 border border-purple-700 rounded-lg p-4 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={16} className="text-purple-400" />
+                    <span className="text-sm text-purple-300 font-medium">Corrected Text</span>
+                  </div>
+                  <button onClick={() => setCorrectedText('')} className="text-gray-400 hover:text-white"><X size={16} /></button>
                 </div>
-                <button onClick={() => setCorrectedText('')} className="text-gray-400 hover:text-white transition-colors">
-                  <X size={14} />
-                </button>
+                <p className="text-sm text-white mb-4 whitespace-pre-wrap bg-black/30 p-3 rounded-md">{correctedText}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setCorrectedText('')} className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors">Cancel</button>
+                  <button onClick={handleAcceptCorrection} className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded-md transition-colors flex items-center justify-center gap-2">
+                    <Check size={14} /> Use This
+                  </button>
+                </div>
               </div>
-              <p className="text-sm text-white mb-3 whitespace-pre-wrap">{correctedText}</p>
-              <button
-                onClick={handleAcceptCorrection}
-                className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded-md transition-colors flex items-center justify-center gap-2"
-              >
-                <Check size={14} />
-                Use This Text
-              </button>
-            </div>
-          )}
-
-          {showHistory && (
-            <div className="mt-2 flex-1 overflow-y-auto bg-black/30 rounded-lg border border-gray-700 flex flex-col max-h-40">
-              {commandHistory.length > 0 ? (
-                <>
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700 bg-gray-900/50 flex-shrink-0">
-                    <span className="text-xs text-gray-400">History</span>
-                    <button onClick={() => setCommandHistory([])} className="text-xs text-red-400 hover:text-red-300">Clear</button>
-                  </div>
-                  <div className="divide-y divide-gray-800 overflow-y-auto">
-                    {commandHistory.map((cmd, idx) => (
-                      <div key={idx} onClick={() => handleSelectHistory(cmd)}
-                        className="px-3 py-2 hover:bg-gray-800 cursor-pointer text-gray-300 hover:text-white group">
-                        <div className="flex items-center gap-2">
-                          <History size={12} className="text-gray-500 flex-shrink-0" />
-                          <span className="truncate text-sm flex-1">{cmd}</span>
-                          <button onClick={(e) => { e.stopPropagation(); setCommandHistory(prev => prev.filter((_, i) => i !== idx)); }}
-                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity">
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="px-4 py-3 text-gray-500 text-center text-sm">No history yet</div>
-              )}
             </div>
           )}
         </div>
       </form>
     </FloatingPanel>
+
+    {/* 历史记录面板 */}
+    {showHistory && commandHistory.length > 0 && (
+      <div 
+        className="fixed bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl backdrop-blur-sm z-[999999] flex flex-col max-h-80"
+        style={{ 
+          left: currentPos.x,
+          bottom: window.innerHeight - currentPos.y + 8,
+          width: currentSize.width
+        }}
+      >
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700 bg-gray-900/50 flex-shrink-0">
+          <span className="text-xs text-gray-400">History</span>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                const text = commandHistory.join('\n');
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `history_${paneTarget}_${Date.now()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="text-xs text-blue-400 hover:text-blue-300"
+            >
+              Export
+            </button>
+            <button onClick={() => setCommandHistory([])} className="text-xs text-red-400 hover:text-red-300">Clear</button>
+            <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white"><X size={14} /></button>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-800 overflow-y-auto">
+          {commandHistory.map((cmd, idx) => (
+            <div key={idx} onClick={() => { handleSelectHistory(cmd); setShowHistory(false); }}
+              className="px-3 py-2 hover:bg-gray-800 cursor-pointer text-gray-300 hover:text-white group">
+              <div className="flex items-center gap-2">
+                <History size={12} className="text-gray-500 flex-shrink-0" />
+                <span className="truncate text-sm flex-1">{cmd}</span>
+                <button onClick={(e) => { e.stopPropagation(); setCommandHistory(prev => prev.filter((_, i) => i !== idx)); }}
+                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity">
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* 队列显示面板 */}
+    {queueLen > 0 && (
+      <div 
+        className="fixed bg-gray-900/95 border border-orange-500/50 rounded-lg p-2 shadow-xl backdrop-blur-sm z-[999999]"
+        style={{ 
+          left: currentPos.x,
+          top: currentPos.y + currentSize.height + 8,
+          width: currentSize.width
+        }}
+      >
+        <div className="text-xs text-gray-300 mb-2 max-h-24 overflow-y-auto whitespace-pre-wrap bg-black/30 p-2 rounded">
+          {sendQueueRef.current.join('\n\n')}
+        </div>
+        <button
+          onClick={() => {
+            const merged = sendQueueRef.current.join('\n\n');
+            setPromptText(merged);
+            sendQueueRef.current = [];
+            setQueueLen(0);
+            setTimeout(() => textareaRef.current?.focus(), 50);
+          }}
+          className="w-full text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+        >
+          Edit
+        </button>
+      </div>
+    )}
+  </>
   );
 });

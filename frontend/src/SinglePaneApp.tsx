@@ -49,7 +49,7 @@ const App: React.FC = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [paneTitle, setPaneTitle] = useState<string>('');
   const [paneWorkspace, setPaneWorkspace] = useState<string>('');
-  const [readOnly, setReadOnly] = useState(false);
+  const [readOnly, setReadOnly] = useState(true);
   const [isRestarting, setIsRestarting] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [captureOutput, setCaptureOutput] = useState<string | null>(null);
@@ -609,9 +609,22 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* ReadOnly mask */}
+      {readOnly && (
+        <div 
+          className="fixed"
+          style={{top: 32, left: 0, right: 0, bottom: 0, zIndex: 999998, cursor: 'not-allowed'}}
+          onClick={() => {
+            setToast('Click unlock button to edit');
+            setTimeout(() => setToast(null), 2000);
+            commandPanelRef.current?.focusTextarea();
+          }}
+        />
+      )}
+
       {/* Toast notification */}
       {toast && (
-        <div className="absolute bottom-4 left-4 z-50 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-lg border-2 border-blue-400">
+        <div className="fixed bottom-4 left-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-lg border-2 border-blue-400" style={{zIndex: 999999999}}>
           {toast}
         </div>
       )}
