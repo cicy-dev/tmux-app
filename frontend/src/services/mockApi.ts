@@ -16,15 +16,6 @@ export const sendCommandToTmux = async (command: string, tmuxTarget: string): Pr
     body: JSON.stringify({ win_id: tmuxTarget, text: command }),
   });
   const data = await res.json();
-  
-  if (data.success) {
-    await fetch(getApiUrl('/api/tmux/send'), {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ win_id: tmuxTarget, keys: 'Enter' }),
-    });
-  }
-  
   return { success: data.success, message: data.success ? 'Sent to tmux' : data.detail };
 };
 

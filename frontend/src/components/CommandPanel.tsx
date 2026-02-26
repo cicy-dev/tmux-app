@@ -1,5 +1,5 @@
 import React, { useEffect ,useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard } from 'lucide-react';
+import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Keyboard } from 'lucide-react';
 import { FloatingPanel } from './FloatingPanel';
 import { Position, Size } from '../types';
 import { sendCommandToTmux } from '../services/mockApi';
@@ -18,10 +18,14 @@ interface CommandPanelProps {
   onChange: (pos: Position, size: Size) => void;
   onCapturePane?: () => void;
   isCapturing?: boolean;
+  canSend?: boolean;
+  agentStatus?: string;
+  contextUsage?: number | null;
 }
 
 export interface CommandPanelHandle {
   focusTextarea: () => void;
+  setPrompt: (text: string) => void;
 }
 
 export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
@@ -37,6 +41,9 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   onChange,
   onCapturePane,
   isCapturing,
+  canSend = true,
+  agentStatus = 'idle',
+  contextUsage,
 }, ref) => {
   const [promptText, setPromptText] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -75,10 +82,12 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   const [correctedText, setCorrectedText] = useState('');
   const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showArrows, setShowArrows] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useImperativeHandle(ref, () => ({
     focusTextarea: () => { setTimeout(() => textareaRef.current?.focus(), 50); },
+    setPrompt: (text: string) => { setPromptText(text); setTimeout(() => textareaRef.current?.focus(), 50); },
   }));
 
   const handleSendPrompt = useCallback(async (e?: React.FormEvent) => {
@@ -155,6 +164,13 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
             </button>
           )}
           <button
+            onClick={() => setShowHistory(v => !v)}
+            className={`p-1.5 rounded transition-colors ${showHistory ? 'text-orange-400 bg-orange-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+            title="Command history"
+          >
+            <History size={14} />
+          </button>
+          <button
             onClick={onReadOnlyToggle}
             className={`p-1.5 rounded transition-colors ${readOnly ? 'text-red-400 bg-red-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
             title={readOnly ? 'Read-only ON (click to disable)' : 'Enable read-only'}
@@ -214,18 +230,61 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                 }
               }}
               placeholder="Type command..."
-              className="w-full h-full bg-black/50 text-white rounded-lg border border-gray-700 p-2 pr-2 pb-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm shadow-inner placeholder:text-gray-600 placeholder:opacity-50"
-              disabled={isSending}
+              className="w-full h-full bg-black/50 text-white rounded-lg border border-gray-700 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm shadow-inner placeholder:text-gray-600 placeholder:opacity-50"
+              disabled={isSending || !canSend}
             />
-            <div className="absolute bottom-3 right-2 flex gap-1">
-              <button
-                type="button"
-                onClick={() => setShowHistory(v => !v)}
-                className={`p-1.5 rounded-md transition-colors ${showHistory ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-                title="Command history"
+          </div>
+          {showArrows && (
+            <div className="flex items-center justify-center gap-1.5 mt-1.5">
+              {[
+                { label: '←', key: 'Left' },
+                { label: '↓', key: 'Down' },
+                { label: '↑', key: 'Up' },
+                { label: '→', key: 'Right' },
+                { label: '⏎', key: 'Enter' },
+                { label: 'Esc', key: 'escape' },
+                { label: 'C-c', key: 'ctrl+c' },
+              ].map(b => (
+                <button key={b.key} type="button" onClick={async () => {
+                  const keyMap: Record<string, string> = { 'Left': 'Left', 'Down': 'Down', 'Up': 'Up', 'Right': 'Right', 'Enter': 'Enter', 'escape': 'Escape', 'ctrl+c': 'C-c' };
+                  const k = keyMap[b.key] || b.key;
+                  await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: k }) });
+                }}
+                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors shadow"
+                >{b.label}</button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center justify-between mt-1.5 px-0.5">
+            <div className="text-xs flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${agentStatus === 'idle' ? 'bg-green-400' : agentStatus === 'wait_auth' ? 'bg-yellow-400 animate-pulse' : agentStatus === 'compacting' ? 'bg-blue-400 animate-pulse' : agentStatus === 'wait_startup' ? 'bg-gray-400' : 'bg-cyan-400 animate-pulse'}`} />
+              <span className="text-gray-500 capitalize">{agentStatus}</span>
+              {contextUsage != null && <span className={contextUsage >= 80 ? 'text-red-400' : contextUsage >= 50 ? 'text-yellow-400' : 'text-gray-600'}>· {contextUsage}%</span>}
+            </div>
+            <div className="flex gap-1">
+              <button type="button" onClick={() => setShowArrows(v => !v)}
+                className={`p-1.5 rounded-md transition-colors shadow-lg ${showArrows ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                title="Arrow keys"
               >
-                <History size={14} />
+                <Keyboard size={14} />
               </button>
+              <select
+                className="bg-gray-800 text-gray-300 text-xs rounded-md border border-gray-700 px-1.5 py-1.5 outline-none cursor-pointer hover:bg-gray-700"
+                value=""
+                onChange={async (e) => {
+                  const v = e.target.value;
+                  if (!v) return;
+                  e.target.value = '';
+                  await sendCommandToTmux(v, paneTarget);
+                }}
+              >
+                <option value="">⚡</option>
+                <option value="/compact">/compact</option>
+                <option value="/model">/model</option>
+                <option value="t">Trust (t)</option>
+                <option value="y">Yes (y)</option>
+                <option value="n">No (n)</option>
+              </select>
               <button
                 type="button"
                 onClick={handleCorrectEnglish}
@@ -237,7 +296,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               </button>
               <button
                 type="submit"
-                disabled={!promptText.trim() || isSending}
+                disabled={!promptText.trim() || isSending || !canSend}
                 className="p-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 {isSending ? <Loader2 size={14} className="animate-spin" /> : sendSuccess ? <CheckCircle size={14} className="text-green-400" /> : (

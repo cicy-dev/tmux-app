@@ -41,6 +41,7 @@ declare global {
 
 const App: React.FC = () => {
   const isInIframe = new URLSearchParams(window.location.search).get('iframe') === '1';
+  const [showTopbar, setShowTopbar] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -52,6 +53,8 @@ const App: React.FC = () => {
   const [isRestarting, setIsRestarting] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [captureOutput, setCaptureOutput] = useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState('idle');
+  const [contextUsage, setContextUsage] = useState<number | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
 
   const [isInteracting, setIsInteracting] = useState(false);
@@ -168,6 +171,17 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isLoaded) localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   }, [settings, isLoaded]);
+
+  // --- Agent status polling ---
+  useEffect(() => {
+    if (!token) return;
+    const poll = () => fetch(`${API_BASE}/api/tmux/pane/agent/status/${encodeURIComponent(BOT_NAME)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(r => r.json()).then(d => { console.log(`[agent-status] ${d.status} | ${d.raw}`); setAgentStatus(d.status); if (d.contextUsage != null) setContextUsage(d.contextUsage); }).catch(() => {});
+    poll();
+    const id = setInterval(poll, 1000);
+    return () => clearInterval(id);
+  }, [token]);
 
   // --- Network health ---
   useEffect(() => {
@@ -367,7 +381,7 @@ const App: React.FC = () => {
     setIsSavingPane(true);
     try {
       const res = await fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(editingPane),
       });
@@ -407,9 +421,24 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden font-sans" >
-      {/* Title bar — hidden when in iframe */}
+      {/* 右上角菜单按钮 */}
+      {!isInIframe && !showTopbar && !readOnly && (
+        <button
+          onClick={() => setShowTopbar(v => !v)}
+          style={{position:'fixed',top:6,right:6,zIndex:111111112,width:28,height:28,borderRadius:6,background:'rgba(30,41,59,0.7)',border:'1px solid rgba(71,85,105,0.5)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#94a3b8',backdropFilter:'blur(4px)'}}
+          onMouseEnter={e=>(e.currentTarget.style.background='rgba(51,65,85,0.9)')}
+          onMouseLeave={e=>(e.currentTarget.style.background='rgba(30,41,59,0.7)')}
+          title="Show toolbar"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        </button>
+      )}
+      {/* Title bar — hidden by default, click menu btn to show */}
       {!isInIframe && (
-      <div className="bg-black" style={{position:"fixed",zIndex:111111111,top:0,right:0,left:0,height:32}}>
+      <div
+        className="bg-black transition-transform duration-200"
+        style={{position:"fixed",zIndex: readOnly ? 999997 : 111111111,top:0,right:0,left:0,height:32,transform:(showTopbar||readOnly)?'translateY(0)':'translateY(-100%)'}}
+      >
 
         <IframeTopbar
         title={paneTitle || BOT_NAME}
@@ -418,6 +447,7 @@ const App: React.FC = () => {
         networkStatus={networkStatus}
         rightActions={
           <>
+            {hasPermission('agent_manage') && (
             <button
               onClick={handleOpenEditPane}
               className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
@@ -425,6 +455,8 @@ const App: React.FC = () => {
             >
               <Pencil size={14} />
             </button>
+            )}
+            {hasPermission('prompt') && (
             <button
               onClick={() => setSettings(prev => ({ ...prev, showPrompt: !prev.showPrompt }))}
               className={`p-1.5 rounded transition-colors ${settings.showPrompt ? 'text-blue-400 bg-blue-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
@@ -432,6 +464,8 @@ const App: React.FC = () => {
             >
               <Keyboard size={14} />
             </button>
+            )}
+            {hasPermission('prompt') && (
             <button
               onClick={() => setSettings(prev => ({ ...prev, showVoiceControl: !prev.showVoiceControl }))}
               className={`p-1.5 rounded transition-colors ${settings.showVoiceControl ? 'text-red-400 bg-red-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
@@ -439,6 +473,7 @@ const App: React.FC = () => {
             >
               <Mic size={14} />
             </button>
+            )}
             <button
               onClick={() => {location.reload()}}
               className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
@@ -446,7 +481,7 @@ const App: React.FC = () => {
             >
               <RotateCcw size={14} />
             </button>
-            {!settings.showPrompt && (
+            {!settings.showPrompt && hasPermission('ttyd_read') && (
             <button
               onClick={handleCapturePane}
               disabled={isCapturing}
@@ -456,6 +491,7 @@ const App: React.FC = () => {
               {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
             </button>
             )}
+            {hasPermission('prompt') && (
             <button
               onClick={async () => {
                 if (!confirm('Restart tmux and ttyd?')) return;
@@ -481,10 +517,18 @@ const App: React.FC = () => {
                 finally { setIsRestarting(false); }
               }}
               disabled={isRestarting}
-              className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+              className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors disabled:opacity-50"
               title="Restart tmux and ttyd"
             >
               <Power size={14} className={isRestarting ? 'animate-pulse' : ''} />
+            </button>
+            )}
+            <button
+              onClick={() => setShowTopbar(false)}
+              className="p-1.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 transition-colors ml-1"
+              title="Hide toolbar"
+            >
+              <X size={14} />
             </button>
           </>
         }
@@ -492,10 +536,10 @@ const App: React.FC = () => {
       </div>
       )}
 
-        {settings.showVoiceControl && (
+        {(isListening || readOnly) && (
           <div
-            className="fixed z-10 pointer-events-auto"
-            style={{zIndex:999998, top:'32px', right:0, bottom:0, left:0, backgroundColor: isListening ? 'rgba(0,200,0,0.15)' : 'transparent'}}
+            id="__MASK"
+            style={{position:'fixed',zIndex:999998, top:32, right:0, bottom:0, left:0, backgroundColor: isListening ? 'rgba(0,200,0,0.15)' : 'transparent', pointerEvents:'auto'}}
             onTouchStart={e => e.preventDefault()}
             onClick={e => e.stopPropagation()}
           />
@@ -518,11 +562,13 @@ const App: React.FC = () => {
           onChange={handlePanelChange}
           onCapturePane={handleCapturePane}
           isCapturing={isCapturing}
+          canSend={agentStatus === 'idle' || agentStatus === 'wait_startup'}
+          agentStatus={agentStatus}
+          contextUsage={contextUsage}
         />
       )}
 
-      {/* Voice floating button */}
-      {settings.showVoiceControl && (
+      {settings.showVoiceControl && hasPermission('prompt') && (
         <div style={{position:"fixed",zIndex:1111111,top:0,right:0,left:0,height:32}}>
         <VoiceFloatingButton
           initialPosition={settings.voiceButtonPosition}
@@ -530,6 +576,7 @@ const App: React.FC = () => {
           onRecordStart={() => startVoiceRecording('direct')}
           onRecordEnd={(shouldSend) => stopVoiceRecording(shouldSend)}
           isRecordingExternal={isListening && voiceModeRef.current === 'direct'}
+          disabled={agentStatus !== 'idle'}
         />
         </div>
       )}
@@ -546,7 +593,7 @@ const App: React.FC = () => {
 
       {/* Capture output modal - full page */}
       {captureOutput !== null && (
-        <div className="fixed z-[9999999] flex flex-col bg-black" style={{top:32,right:0,bottom:0,left:0}}>
+        <div className="fixed z-[9999999] flex flex-col bg-black" style={{top:0,right:0,bottom:0,left:0,zIndex:999999999}}>
           <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700 bg-gray-900 flex-shrink-0" style={{height:32}}>
             <span className="text-sm font-semibold text-white">Pane Output</span>
             <div className="flex gap-2">

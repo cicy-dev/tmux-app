@@ -12,6 +12,9 @@ export interface EditPaneData {
   tg_token?: string;
   tg_chat_id?: string;
   url?: string;
+  private_mode?: boolean;
+  allowed_users?: string;
+  proxy_enable?: boolean;
 }
 
 interface EditPaneDialogProps {
@@ -40,7 +43,7 @@ export const EditPaneDialog: React.FC<EditPaneDialogProps> = ({
   const isFull = mode === 'full';
 
   return (
-    <div className="fixed inset-0 bg-black z-[9999999] flex flex-col" onClick={onClose}>
+    <div className="fixed inset-0 bg-black flex flex-col" style={{zIndex:999999999}} onClick={onClose}>
       <div
         className="bg-gray-900 w-full h-full flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -108,16 +111,7 @@ export const EditPaneDialog: React.FC<EditPaneDialogProps> = ({
                 <p className="text-xs text-gray-600 mt-1">sleep:N waits Ns, key:X sends key</p>
               </div>
 
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">HTTP Proxy</label>
-                <input
-                  type="text"
-                  value={pane.proxy || ''}
-                  onChange={e => onChange({ ...pane, proxy: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500"
-                  placeholder="http://proxy:8080"
-                />
-              </div>
+
 
               <div className="pt-2 border-t border-gray-800">
                 <div className="flex items-center justify-between mb-2">
@@ -145,6 +139,58 @@ export const EditPaneDialog: React.FC<EditPaneDialogProps> = ({
                     onChange={e => onChange({ ...pane, tg_chat_id: e.target.value })}
                     className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2 py-1 focus:outline-none focus:border-purple-500"
                     placeholder="Chat ID"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-300">Private Mode</p>
+                    <p className="text-xs text-gray-500">Restrict access to allowed users</p>
+                  </div>
+                  <label className="flex items-center cursor-pointer">
+                    <div
+                      className={`relative w-8 h-4 rounded-full transition-colors ${pane.private_mode ? 'bg-yellow-600' : 'bg-gray-700'}`}
+                      onClick={() => onChange({ ...pane, private_mode: !pane.private_mode })}
+                    >
+                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${pane.private_mode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </div>
+                  </label>
+                </div>
+
+                <div className={pane.private_mode ? '' : 'opacity-40 pointer-events-none'}>
+                  <label className="block text-xs text-gray-400 mb-1">Allowed Users</label>
+                  <input
+                    type="text"
+                    value={pane.allowed_users || ''}
+                    onChange={e => onChange({ ...pane, allowed_users: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2 py-1 focus:outline-none focus:border-yellow-500"
+                    placeholder="user1, user2"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-300">HTTP Proxy</p>
+                    <p className="text-xs text-gray-500">Enable and set proxy URL</p>
+                  </div>
+                  <label className="flex items-center cursor-pointer">
+                    <div
+                      className={`relative w-8 h-4 rounded-full transition-colors ${pane.proxy_enable ? 'bg-cyan-600' : 'bg-gray-700'}`}
+                      onClick={() => onChange({ ...pane, proxy_enable: !pane.proxy_enable })}
+                    >
+                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${pane.proxy_enable ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </div>
+                  </label>
+                </div>
+                <div className={pane.proxy_enable ? '' : 'opacity-40 pointer-events-none'}>
+                  <input
+                    type="text"
+                    value={pane.proxy || ''}
+                    onChange={e => onChange({ ...pane, proxy: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2 py-1 focus:outline-none focus:border-cyan-500"
+                    placeholder="http://proxy:8080"
                   />
                 </div>
               </div>

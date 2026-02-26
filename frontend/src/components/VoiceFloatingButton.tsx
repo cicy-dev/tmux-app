@@ -8,6 +8,7 @@ interface VoiceFloatingButtonProps {
   onRecordStart: () => void;
   onRecordEnd: (shouldSend: boolean) => void;
   isRecordingExternal: boolean;
+  disabled?: boolean;
 }
 
 export const VoiceFloatingButton: React.FC<VoiceFloatingButtonProps> = ({
@@ -15,7 +16,8 @@ export const VoiceFloatingButton: React.FC<VoiceFloatingButtonProps> = ({
   onPositionChange,
   onRecordStart,
   onRecordEnd,
-  isRecordingExternal
+  isRecordingExternal,
+  disabled = false
 }) => {
   const [position, setPosition] = useState<Position>(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
@@ -41,6 +43,7 @@ export const VoiceFloatingButton: React.FC<VoiceFloatingButtonProps> = ({
   };
 
   const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (disabled) return;
     // Clear any pending stop timers if user taps quickly again
     if (stopTimerRef.current) {
         clearTimeout(stopTimerRef.current);
