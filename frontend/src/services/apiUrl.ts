@@ -15,6 +15,8 @@ export const API_PATHS = {
   TMUX_CAPTURE: '/api/tmux/capture_pane',
   TMUX_PANE: (paneId: string) => `/api/tmux/panes/${encodeURIComponent(paneId)}`,
   TMUX_PANE_RESTART: (paneId: string) => `/api/tmux/panes/${encodeURIComponent(paneId)}/restart`,
+  TMUX_MOUSE_TOGGLE: (action: 'on' | 'off') => `/api/tmux/mouse/${action}`,
+  TMUX_MOUSE_STATUS: '/api/tmux/mouse/status',
   
   TTYD_LIST: '/api/ttyd/list',
   TTYD_START: (paneId: string) => `/api/ttyd/start/${encodeURIComponent(paneId)}`,

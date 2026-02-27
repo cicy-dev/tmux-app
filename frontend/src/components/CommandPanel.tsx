@@ -1,5 +1,5 @@
 import React, { useEffect ,useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Keyboard } from 'lucide-react';
+import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Keyboard, Mouse, SplitSquareHorizontal, SplitSquareVertical, XSquare } from 'lucide-react';
 import { FloatingPanel } from './FloatingPanel';
 import { Position, Size } from '../types';
 import { sendCommandToTmux } from '../services/mockApi';
@@ -83,6 +83,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showArrows, setShowArrows] = useState(false);
+  const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
+  const [isTogglingMouse, setIsTogglingMouse] = useState(false);
   const sendQueueRef = useRef<string[]>([]);
   const [queueLen, setQueueLen] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -94,6 +96,23 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     setCurrentPos(panelPosition);
     setCurrentSize(panelSize);
   }, [panelPosition, panelSize]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(getApiUrl('/api/tmux/mouse/status'), { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json()).then(d => setMouseMode(d.mouse_mode || 'off')).catch(() => {});
+  }, [token]);
+
+  const handleToggleMouse = async () => {
+    if (isTogglingMouse) return;
+    setIsTogglingMouse(true);
+    const newMode = mouseMode === 'on' ? 'off' : 'on';
+    try {
+      const res = await fetch(getApiUrl(`/api/tmux/mouse/${newMode}`), { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) setMouseMode(newMode);
+    } catch {}
+    setIsTogglingMouse(false);
+  };
 
   useImperativeHandle(ref, () => ({
     focusTextarea: () => { setTimeout(() => textareaRef.current?.focus(), 50); },
@@ -187,6 +206,15 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       }}
       headerActions={
         <>
+          <button
+            type="button"
+            onClick={handleToggleMouse}
+            disabled={isTogglingMouse}
+            className={`p-1.5 rounded transition-colors ${mouseMode === 'on' ? 'text-green-400 bg-green-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+            title={mouseMode === 'on' ? "鼠标: 开 (可滚动)" : "鼠标: 关 (可复制)"}
+          >
+            {isTogglingMouse ? <Loader2 size={14} className="animate-spin" /> : <Mouse size={14} />}
+          </button>
           {onCapturePane && (
             <button
               onClick={onCapturePane}
@@ -286,9 +314,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                 { label: '↓', key: 'Down' },
                 { label: '↑', key: 'Up' },
                 { label: '→', key: 'Right' },
-                { label: 'Enter', key: 'Enter', multiline: true },
                 { label: 'Esc', key: 'escape' },
-                { label: 'C-c', key: 'ctrl+c' },
               ].map(b => (
                 <button key={b.key} type="button" onClick={async () => {
                   const keyMap: Record<string, string> = { 'Left': 'Left', 'Down': 'Down', 'Up': 'Up', 'Right': 'Right', 'Enter': 'Enter', 'escape': 'Escape', 'ctrl+c': 'C-c' };
@@ -296,8 +322,20 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                   await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: k }) });
                 }}
                   className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors shadow flex items-center justify-center"
-                >{(b as any).multiline ? <div className="flex flex-col items-center leading-tight"><span className="text-xs">Enter</span></div> : b.label}</button>
+                >{b.label}</button>
               ))}
+              <button type="button" onClick={async () => {
+                await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}/choose-session`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+              }} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors shadow" title="会话选择">^bs</button>
+              <button type="button" onClick={async () => {
+                await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}/split?direction=v`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+              }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="水平分屏(上下)"><SplitSquareHorizontal size={14} /></button>
+              <button type="button" onClick={async () => {
+                await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}/split?direction=h`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+              }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="垂直分屏(左右)"><SplitSquareVertical size={14} /></button>
+              <button type="button" onClick={async () => {
+                await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}/unsplit`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+              }} className="p-1.5 bg-red-700 hover:bg-red-600 text-white rounded-md transition-colors shadow" title="关闭分屏"><XSquare size={14} /></button>
             </div>
           )}
           <div className="flex items-center justify-between mt-1.5 px-0.5">
@@ -308,6 +346,26 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               {queueLen > 0 && <span className="text-orange-400 animate-pulse">· Q:{queueLen}</span>}
             </div>
             <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: 'Enter' }) });
+                }}
+                className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                title="Send Enter"
+              >
+                Enter
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: 'C-c' }) });
+                }}
+                className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                title="Send Ctrl+C"
+              >
+                ^C
+              </button>
               <button type="button" onClick={() => setShowArrows(v => !v)}
                 className={`p-1.5 rounded-md transition-colors shadow-lg ${showArrows ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                 title="Arrow keys"
@@ -327,6 +385,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                 <option value="">⚡</option>
                 <option value="/compact">/compact</option>
                 <option value="/model">/model</option>
+                <option value="/tools trust-all">Trust All</option>
                 <option value="t">Trust (t)</option>
                 <option value="y">Yes (y)</option>
                 <option value="n">No (n)</option>
