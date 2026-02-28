@@ -661,7 +661,7 @@ const App: React.FC = () => {
 
 
       {/* ReadOnly mask */}
-      {Boolean((settings.showPrompt ||settings.showVoiceControl )&& mouseMode === 'off') && (
+      {settings.showVoiceControl && (
         <div 
           className="fixed"
           style={{inset: '32px 0px 0px', zIndex: 999998, cursor: 'not-allowed'}}
