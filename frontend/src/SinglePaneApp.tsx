@@ -660,6 +660,19 @@ const App: React.FC = () => {
 
 
 
+      {/* ReadOnly mask */}
+      {Boolean((settings.showPrompt ||settings.showVoiceControl )&& mouseMode === 'off') && (
+        <div 
+          className="fixed"
+          style={{inset: '32px 0px 0px', zIndex: 999998, cursor: 'not-allowed'}}
+          onClick={() => {
+            setToast('Click unlock button to edit');
+            setTimeout(() => setToast(null), 1000);
+            commandPanelRef.current?.focusTextarea();
+          }}
+        />
+      )}
+
       {/* Toast notification */}
       {toast && (
         <div className="fixed bottom-4 left-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-lg border-2 border-blue-400" style={{zIndex: 999999999}}>
