@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Terminal, Loader2, Clipboard, X, Keyboard, Mic, RotateCcw, Power, Pencil } from 'lucide-react';
+import { Terminal,Mouse, Loader2, Clipboard, X, Keyboard, Mic, RotateCcw, Power, Pencil, Settings } from 'lucide-react';
 import { TtydFrame, TtydFrameHandle } from './components/TtydFrame';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
 import { IframeTopbar } from './components/IframeTopbar';
@@ -73,9 +73,23 @@ const App: React.FC = () => {
   const iframeRef = useRef<TtydFrameHandle>(null);
 
   const iframeUrl = `${TTYD_BASE}/ttyd/${BOT_NAME}/?token=${token || ''}`;
+  const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
 
   const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
 
+  const [isTogglingMouse, setIsTogglingMouse] = useState(false);
+
+    const handleToggleMouse = async () => {
+      if (isTogglingMouse) return;
+      setIsTogglingMouse(true);
+      const newMode = mouseMode === 'on' ? 'off' : 'on';
+      try {
+        const res = await fetch(getApiUrl(`/api/tmux/mouse/${newMode}`), { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) setMouseMode(newMode);
+      } catch {}
+      setIsTogglingMouse(false);
+    };
+  
   // --- Initialization ---
   useEffect(() => {
     const init = async () => {
@@ -209,7 +223,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), 2000);
+      const timer = setTimeout(() => setToast(null), 1000);
       return () => clearTimeout(timer);
     }
   }, [toast]);
@@ -328,10 +342,30 @@ const App: React.FC = () => {
     }
   }, [settings.forwardEvents, settings.showPrompt, settings.showVoiceControl]);
 
+  // Bind click on element with id __MASK to show alert
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+    const getEl = () => document.getElementById('__MASK');
+    const handler = (e: Event) => { try { alert('mask'); } catch {} };
+    const bind = () => {
+      const node = getEl();
+      if (node) node.addEventListener('click', handler);
+    };
+    bind();
+    // Observe DOM for future additions of the mask element
+    const obs = new MutationObserver(() => bind());
+    obs.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      const node = getEl();
+      if (node) node.removeEventListener('click', handler);
+      obs.disconnect();
+    };
+  }, []);
+
+
+  // useEffect(() => {
+  //   window.addEventListener('keydown', handleKeyDown);
+  //   return () => window.removeEventListener('keydown', handleKeyDown);
+  // }, [handleKeyDown]);
 
   const handlePanelChange = (pos: Position, size: Size) => {
     setSettings(prev => ({ ...prev, panelPosition: pos, panelSize: size }));
@@ -422,7 +456,7 @@ const App: React.FC = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden font-sans" >
       {/* 右上角菜单按钮 */}
-      {!isInIframe && !showTopbar && !readOnly && (
+      {!isInIframe && !showTopbar && (
         <button
           onClick={() => setShowTopbar(v => !v)}
           style={{position:'fixed',top:6,right:6,zIndex:111111112,width:28,height:28,borderRadius:6,background:'rgba(30,41,59,0.7)',border:'1px solid rgba(71,85,105,0.5)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#94a3b8',backdropFilter:'blur(4px)'}}
@@ -437,7 +471,7 @@ const App: React.FC = () => {
       {!isInIframe && (
       <div
         className="bg-black transition-transform duration-200"
-        style={{position:"fixed",zIndex: readOnly ? 999997 : 111111111,top:0,right:0,left:0,height:32,transform:(showTopbar||readOnly)?'translateY(0)':'translateY(-100%)'}}
+        style={{position:"fixed",zIndex: readOnly ? 999997 : 111111111,top:0,right:0,left:0,height:32,transform:(showTopbar)?'translateY(0)':'translateY(-100%)'}}
       >
 
         <IframeTopbar
@@ -447,6 +481,27 @@ const App: React.FC = () => {
         networkStatus={networkStatus}
         rightActions={
           <>
+
+
+          <button
+            type="button"
+            onClick={handleToggleMouse}
+            disabled={isTogglingMouse}
+            className={`p-1.5 rounded transition-colors ${mouseMode === 'on' ? 'text-green-400 bg-green-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+            title={mouseMode === 'on' ? "鼠标: 开 (可滚动)" : "鼠标: 关 (可复制)"}
+          >
+            {isTogglingMouse ? <Loader2 size={14} className="animate-spin" /> : <Mouse size={14} />}
+          </button>
+           {hasPermission('ttyd_read') && (
+            <button
+              onClick={handleCapturePane}
+              disabled={isCapturing}
+              className="p-1 rounded text-yellow-400 hover:text-yellow-300 hover:bg-gray-700 disabled:opacity-40"
+              title="Capture pane output"
+            >
+              {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
+            </button>
+            )}
             {hasPermission('agent_manage') && (
             <button
               onClick={handleOpenEditPane}
@@ -458,7 +513,13 @@ const App: React.FC = () => {
             )}
             {hasPermission('prompt') && (
             <button
-              onClick={() => setSettings(prev => ({ ...prev, showPrompt: !prev.showPrompt }))}
+              onClick={() => {
+                  if(settings.showVoiceControl){
+                    setSettings(prev => ({ ...prev,showVoiceControl:false, showPrompt: !prev.showPrompt }))
+                  }else{
+                    setSettings(prev => ({ ...prev, showPrompt: !prev.showPrompt }))
+                  }
+              }}
               className={`p-1.5 rounded transition-colors ${settings.showPrompt ? 'text-blue-400 bg-blue-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
               title={settings.showPrompt ? "Hide command panel" : "Show command panel"}
             >
@@ -467,7 +528,14 @@ const App: React.FC = () => {
             )}
             {hasPermission('prompt') && (
             <button
-              onClick={() => setSettings(prev => ({ ...prev, showVoiceControl: !prev.showVoiceControl }))}
+              onClick={() => {
+                if(settings.showPrompt){
+                  setSettings(prev => ({ ...prev, showPrompt:false,showVoiceControl: !prev.showVoiceControl}))
+                }else{
+                  setSettings(prev => ({ ...prev, showVoiceControl: !prev.showVoiceControl}))
+                }
+                
+              }}
               className={`p-1.5 rounded transition-colors ${settings.showVoiceControl ? 'text-red-400 bg-red-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
               title={settings.showVoiceControl ? "Hide voice mode" : "Show voice mode"}
             >
@@ -481,16 +549,7 @@ const App: React.FC = () => {
             >
               <RotateCcw size={14} />
             </button>
-            {!settings.showPrompt && hasPermission('ttyd_read') && (
-            <button
-              onClick={handleCapturePane}
-              disabled={isCapturing}
-              className="p-1 rounded text-yellow-400 hover:text-yellow-300 hover:bg-gray-700 disabled:opacity-40"
-              title="Capture pane output"
-            >
-              {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
-            </button>
-            )}
+           
             {hasPermission('prompt') && (
             <button
               onClick={async () => {
@@ -536,14 +595,14 @@ const App: React.FC = () => {
       </div>
       )}
 
-        {(isListening || readOnly) && (
+        {/* {(isListening || readOnly) && (
           <div
             id="__MASK"
             style={{position:'fixed',zIndex:999998, top:32, right:0, bottom:0, left:0, backgroundColor: isListening ? 'rgba(0,200,0,0.15)' : 'transparent', pointerEvents:'auto'}}
             onTouchStart={e => e.preventDefault()}
             onClick={e => e.stopPropagation()}
           />
-        )}
+        )} */}
 
 
       {/* Floating command panel */}
@@ -576,7 +635,7 @@ const App: React.FC = () => {
           onRecordStart={() => startVoiceRecording('direct')}
           onRecordEnd={(shouldSend) => stopVoiceRecording(shouldSend)}
           isRecordingExternal={isListening && voiceModeRef.current === 'direct'}
-          disabled={agentStatus !== 'idle'}
+          disabled={false}
         />
         </div></div>
       )}
@@ -623,14 +682,15 @@ const App: React.FC = () => {
         </div>
       )}
 
+
       {/* ReadOnly mask */}
-      {readOnly && (
+      {Boolean((settings.showPrompt ||settings.showVoiceControl )&& mouseMode === 'off') && (
         <div 
           className="fixed"
           style={{top: 32, left: 0, right: 0, bottom: 0, zIndex: 999998, cursor: 'not-allowed'}}
           onClick={() => {
             setToast('Click unlock button to edit');
-            setTimeout(() => setToast(null), 2000);
+            setTimeout(() => setToast(null), 1000);
             commandPanelRef.current?.focusTextarea();
           }}
         />
