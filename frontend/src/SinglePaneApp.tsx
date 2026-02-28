@@ -41,6 +41,8 @@ declare global {
 
 const App: React.FC = () => {
   const isInIframe = new URLSearchParams(window.location.search).get('iframe') === '1';
+  const IN_IFRAME = isInIframe; // global flag: true when iframe=1
+
   const [showTopbar, setShowTopbar] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -581,7 +583,7 @@ const App: React.FC = () => {
 
 
       {/* Floating command panel */}
-      {settings.showPrompt && hasPermission('prompt') && (
+      {settings.showPrompt && hasPermission('prompt') && !IN_IFRAME && (
         <CommandPanel
           ref={commandPanelRef}
           paneTarget={TMUX_TARGET}
