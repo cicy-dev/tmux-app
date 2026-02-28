@@ -688,7 +688,7 @@ const App: React.FC = () => {
       {Boolean((settings.showPrompt ||settings.showVoiceControl )&& mouseMode === 'off') && (
         <div 
           className="fixed"
-          style={{top: 32, left: 0, right: 0, bottom: 0, zIndex: 999998, cursor: 'not-allowed'}}
+          style={{inset: '32px 0px 0px', zIndex: 999998, cursor: 'not-allowed'}}
           onClick={() => {
             setToast('Click unlock button to edit');
             setTimeout(() => setToast(null), 1000);
