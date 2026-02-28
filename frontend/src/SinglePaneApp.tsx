@@ -342,24 +342,6 @@ const App: React.FC = () => {
     }
   }, [settings.forwardEvents, settings.showPrompt, settings.showVoiceControl]);
 
-  // Bind click on element with id __MASK to show alert
-  useEffect(() => {
-    const getEl = () => document.getElementById('__MASK');
-    const handler = (e: Event) => { try { alert('mask'); } catch {} };
-    const bind = () => {
-      const node = getEl();
-      if (node) node.addEventListener('click', handler);
-    };
-    bind();
-    // Observe DOM for future additions of the mask element
-    const obs = new MutationObserver(() => bind());
-    obs.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      const node = getEl();
-      if (node) node.removeEventListener('click', handler);
-      obs.disconnect();
-    };
-  }, []);
 
 
   // useEffect(() => {
@@ -595,15 +577,7 @@ const App: React.FC = () => {
       </div>
       )}
 
-        {/* __MASK div (overlay) intentionally commented out: previously used for listening/read-only overlay */}
-        {/* {(isListening || readOnly) && (
-          <div
-            id="__MASK"
-            style={{position:'fixed',zIndex:999998, top:32, right:0, bottom:0, left:0, backgroundColor: isListening ? 'rgba(0,200,0,0.15)' : 'transparent', pointerEvents:'auto'}}
-            onTouchStart={e => e.preventDefault()}
-            onClick={e => e.stopPropagation()}
-          />
-        )} */}
+
 
 
       {/* Floating command panel */}
