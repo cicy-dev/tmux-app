@@ -595,6 +595,7 @@ const App: React.FC = () => {
       </div>
       )}
 
+        {/* __MASK div (overlay) intentionally commented out: previously used for listening/read-only overlay */}
         {/* {(isListening || readOnly) && (
           <div
             id="__MASK"
