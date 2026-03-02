@@ -347,10 +347,10 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               }} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors shadow" title="会话选择">^bs</button>
               <button type="button" onClick={async () => {
                 await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}/split?direction=v`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
-              }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="水平分屏(上下)"><SplitSquareHorizontal size={14} /></button>
+              }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="水平分屏(上下)"><SplitSquareVertical size={14} /></button>
               <button type="button" onClick={async () => {
                 await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}/split?direction=h`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
-              }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="垂直分屏(左右)"><SplitSquareVertical size={14} /></button>
+              }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="垂直分屏(左右)"><SplitSquareHorizontal size={14} /></button>
               <button type="button" onClick={async () => {
                 await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneTarget)}/unsplit`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
               }} className="p-1.5 bg-red-700 hover:bg-red-600 text-white rounded-md transition-colors shadow" title="关闭分屏"><XSquare size={14} /></button>
