@@ -202,17 +202,22 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       <FloatingPanel
         title={
           boundAgents.length > 0 ? (
-            <select 
-              value={selectedPane} 
-              onChange={(e) => setSelectedPane(e.target.value)}
-              className="bg-transparent text-white text-xs border-none outline-none cursor-pointer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <option value={paneTarget}>{title} (Master)</option>
-              {boundAgents.map(agent => (
-                <option key={agent} value={agent}>{agent.replace(':main.0', '')}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1">
+              <select 
+                value={selectedPane} 
+                onChange={(e) => setSelectedPane(e.target.value)}
+                className="bg-transparent text-white text-xs border-none outline-none cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value={paneTarget}>{title}</option>
+                {boundAgents.map(agent => (
+                  <option key={agent} value={agent}>{agent.replace(':main.0', '')}</option>
+                ))}
+              </select>
+              {selectedPane === paneTarget && (
+                <span className="text-yellow-400 text-xs font-bold">Master</span>
+              )}
+            </div>
           ) : title
         }
         initialPosition={panelPosition}

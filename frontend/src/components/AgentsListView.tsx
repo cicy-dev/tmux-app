@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Plus, Trash2, RotateCw, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, Trash2, RotateCw, ExternalLink, Power } from 'lucide-react';
 import { API_BASE, getApiUrl } from '../services/apiUrl';
 import { CaptureDialog } from './CaptureDialog';
 import { TerminalControls } from './TerminalControls';
@@ -273,6 +273,24 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, o
                   className="text-blue-400 hover:text-blue-300 bg-gray-900/80 p-1 rounded"
                 >
                   <RotateCw size={14} />
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`Restart ${agent.name}?`)) return;
+                    try {
+                      await fetch(`${API_BASE}/api/tmux/panes/${agent.name}/restart`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      });
+                      setTimeout(() => handleReloadIframe(agent.name), 2000);
+                    } catch (err) {
+                      console.error(err);
+                      alert('Restart failed');
+                    }
+                  }}
+                  className="text-orange-400 hover:text-orange-300 bg-gray-900/80 p-1 rounded"
+                >
+                  <Power size={14} />
                 </button>
                 <button
                   onClick={() => handleRemoveAgent(agent.id)}
