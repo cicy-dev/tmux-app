@@ -21,7 +21,7 @@ const TMUX_TARGET = `${BOT_NAME}`;
 
 const DEFAULT_SETTINGS: AppSettings = {
   panelPosition: { x: Math.max(20, window.innerWidth / 2 - 150), y: Math.max(60, window.innerHeight - 160) },
-  panelSize: { width: 300, height: 140 },
+  panelSize: { width: 360, height: 180 },
   forwardEvents: true,
   lastDraft: '',
   showPrompt: true,
@@ -454,48 +454,11 @@ const App: React.FC = () => {
       {/* Title bar — hidden by default, click menu btn to show */}
       {!isInIframe && (
       <div
-        className="bg-black transition-transform duration-200"
-        style={{position:"fixed",zIndex: readOnly ? 999997 : 111111111,top:0,right:0,left:0,height:32,transform:(showTopbar)?'translateY(0)':'translateY(-100%)'}}
+        className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 transition-transform duration-200 rounded-lg"
+        style={{position:"fixed",zIndex:30,top:8,right:8,width:90,height:32,transform:(showTopbar)?'translateY(0)':'translateY(-100%)'}}
       >
-
-        <IframeTopbar
-        title={paneTitle || BOT_NAME}
-        workspace={paneWorkspace || undefined}
-        networkLatency={networkLatency}
-        networkStatus={networkStatus}
-        rightActions={
-          <>
-
-
-          <button
-            type="button"
-            onClick={handleToggleMouse}
-            disabled={isTogglingMouse}
-            className={`p-1.5 rounded transition-colors ${mouseMode === 'on' ? 'text-green-400 bg-green-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-            title={mouseMode === 'on' ? "鼠标: 开 (可滚动)" : "鼠标: 关 (可复制)"}
-          >
-            {isTogglingMouse ? <Loader2 size={14} className="animate-spin" /> : <Mouse size={14} />}
-          </button>
-           {hasPermission('ttyd_read') && (
-            <button
-              onClick={handleCapturePane}
-              disabled={isCapturing}
-              className="p-1 rounded text-yellow-400 hover:text-yellow-300 hover:bg-gray-700 disabled:opacity-40"
-              title="Capture pane output"
-            >
-              {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
-            </button>
-            )}
-            {hasPermission('agent_manage') && (
-            <button
-              onClick={handleOpenEditPane}
-              className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-              title="Edit pane"
-            >
-              <Pencil size={14} />
-            </button>
-            )}
-            {hasPermission('prompt') && (
+        <div className="h-full flex items-center justify-center px-3 gap-1">
+          {hasPermission('prompt') && (
             <button
               onClick={() => {
                   if(settings.showVoiceControl){
@@ -526,56 +489,7 @@ const App: React.FC = () => {
               <Mic size={14} />
             </button>
             )}
-            <button
-              onClick={() => {location.reload()}}
-              className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-              title="Reload page"
-            >
-              <RotateCcw size={14} />
-            </button>
-           
-            {hasPermission('prompt') && (
-            <button
-              onClick={async () => {
-                if (!confirm('Restart tmux and ttyd?')) return;
-                setIsRestarting(true);
-                try {
-                  await fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}/restart`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                  });
-                  for (let i = 0; i < 30; i++) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    try {
-                      const res = await fetch(`${API_BASE}/api/ttyd/status/${encodeURIComponent(BOT_NAME)}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                      });
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (data.ready === true) { setIframeKey(k => k + 1); break; }
-                      }
-                    } catch { /* poll */ }
-                  }
-                } catch (e) { console.error(e); }
-                finally { setIsRestarting(false); }
-              }}
-              disabled={isRestarting}
-              className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-              title="Restart tmux and ttyd"
-            >
-              <Power size={14} className={isRestarting ? 'animate-pulse' : ''} />
-            </button>
-            )}
-            <button
-              onClick={() => setShowTopbar(false)}
-              className="p-1.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 transition-colors ml-1"
-              title="Hide toolbar"
-            >
-              <X size={14} />
-            </button>
-          </>
-        }
-      />
+        </div>
       </div>
       )}
 
@@ -601,6 +515,40 @@ const App: React.FC = () => {
           canSend={agentStatus === 'idle' || agentStatus === 'wait_startup'}
           agentStatus={agentStatus}
           contextUsage={contextUsage}
+          mouseMode={mouseMode}
+          isTogglingMouse={isTogglingMouse}
+          onToggleMouse={handleToggleMouse}
+          onEditPane={handleOpenEditPane}
+          onReload={() => location.reload()}
+          onRestart={async () => {
+            if (!confirm('Restart tmux and ttyd?')) return;
+            setIsRestarting(true);
+            try {
+              await fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}/restart`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+              });
+              for (let i = 0; i < 30; i++) {
+                await new Promise(r => setTimeout(r, 1000));
+                try {
+                  const res = await fetch(`${API_BASE}/api/ttyd/status/${encodeURIComponent(BOT_NAME)}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.ready === true) { setIframeKey(k => k + 1); break; }
+                  }
+                } catch { /* poll */ }
+              }
+            } catch (e) { console.error(e); }
+            finally { setIsRestarting(false); }
+          }}
+          isRestarting={isRestarting}
+          hasEditPermission={hasPermission('agent_manage')}
+          hasRestartPermission={hasPermission('prompt')}
+          hasCapturePermission={hasPermission('ttyd_read')}
+          networkLatency={networkLatency}
+          networkStatus={networkStatus}
         />
       )}
 

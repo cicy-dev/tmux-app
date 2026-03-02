@@ -1,5 +1,5 @@
 import React, { useEffect ,useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Keyboard, Mouse, SplitSquareHorizontal, SplitSquareVertical, XSquare } from 'lucide-react';
+import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Keyboard, Mouse, SplitSquareHorizontal, SplitSquareVertical, XSquare, Pencil, RotateCcw, Power, Wifi, WifiOff } from 'lucide-react';
 import { FloatingPanel } from './FloatingPanel';
 import { Position, Size } from '../types';
 import { sendCommandToTmux } from '../services/mockApi';
@@ -21,6 +21,18 @@ interface CommandPanelProps {
   canSend?: boolean;
   agentStatus?: string;
   contextUsage?: number | null;
+  mouseMode?: 'on' | 'off';
+  isTogglingMouse?: boolean;
+  onToggleMouse?: () => void;
+  onEditPane?: () => void;
+  onReload?: () => void;
+  onRestart?: () => void;
+  isRestarting?: boolean;
+  hasEditPermission?: boolean;
+  hasRestartPermission?: boolean;
+  hasCapturePermission?: boolean;
+  networkLatency?: number | null;
+  networkStatus?: 'excellent' | 'good' | 'poor' | 'offline';
 }
 
 export interface CommandPanelHandle {
@@ -44,6 +56,18 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   canSend = true,
   agentStatus = 'idle',
   contextUsage,
+  mouseMode = 'off',
+  isTogglingMouse = false,
+  onToggleMouse,
+  onEditPane,
+  onReload,
+  onRestart,
+  isRestarting = false,
+  hasEditPermission = false,
+  hasRestartPermission = false,
+  hasCapturePermission = false,
+  networkLatency = null,
+  networkStatus = 'good',
 }, ref) => {
   const [promptText, setPromptText] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -83,8 +107,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showArrows, setShowArrows] = useState(false);
-  const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
-  const [isTogglingMouse, setIsTogglingMouse] = useState(false);
   const sendQueueRef = useRef<string[]>([]);
   const [queueLen, setQueueLen] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -96,23 +118,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     setCurrentPos(panelPosition);
     setCurrentSize(panelSize);
   }, [panelPosition, panelSize]);
-
-  useEffect(() => {
-    if (!token) return;
-    fetch(getApiUrl('/api/tmux/mouse/status'), { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(r => r.json()).then(d => setMouseMode(d.mouse_mode || 'off')).catch(() => {});
-  }, [token]);
-
-  const handleToggleMouse = async () => {
-    if (isTogglingMouse) return;
-    setIsTogglingMouse(true);
-    const newMode = mouseMode === 'on' ? 'off' : 'on';
-    try {
-      const res = await fetch(getApiUrl(`/api/tmux/mouse/${newMode}`), { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) setMouseMode(newMode);
-    } catch {}
-    setIsTogglingMouse(false);
-  };
 
   useImperativeHandle(ref, () => ({
     focusTextarea: () => { setTimeout(() => textareaRef.current?.focus(), 50); },
@@ -130,12 +135,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     setTempDraft('');
     setPromptText('');
     saveDraft('');
-    if (!canSend) {
-      // 队列模式：agent 忙时排队
-      sendQueueRef.current.push(cmd);
-      setQueueLen(sendQueueRef.current.length);
-      return;
-    }
     setIsSending(true);
     setSendSuccess(false);
     try {
@@ -149,18 +148,18 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     }
   }, [promptText, paneTarget, canSend]);
 
-  // 队列自动发送：agent idle 时发送排队的命令
-  useEffect(() => {
-    if (!canSend || sendQueueRef.current.length === 0) return;
-    const queued = sendQueueRef.current.join('\n');
-    sendQueueRef.current = [];
-    setQueueLen(0);
-    setIsSending(true);
-    sendCommandToTmux(queued, paneTarget)
-      .then(() => { setSendSuccess(true); setTimeout(() => setSendSuccess(false), 2000); })
-      .catch(console.error)
-      .finally(() => { setIsSending(false); });
-  }, [canSend, paneTarget]);
+  // 队列自动发送已禁用
+  // useEffect(() => {
+  //   if (!canSend || sendQueueRef.current.length === 0) return;
+  //   const queued = sendQueueRef.current.join('\n');
+  //   sendQueueRef.current = [];
+  //   setQueueLen(0);
+  //   setIsSending(true);
+  //   sendCommandToTmux(queued, paneTarget)
+  //     .then(() => { setSendSuccess(true); setTimeout(() => setSendSuccess(false), 2000); })
+  //     .catch(console.error)
+  //     .finally(() => { setIsSending(false); });
+  // }, [canSend, paneTarget]);
 
   const handleCorrectEnglish = async () => {
     if (!promptText.trim() || isCorrectingEnglish || !token) return;
@@ -196,7 +195,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
         title={title}
         initialPosition={panelPosition}
         initialSize={panelSize}
-      minSize={{ width: 340, height: 140 }}
+      minSize={{ width: 360, height: 180 }}
       onInteractionStart={onInteractionStart}
       onInteractionEnd={onInteractionEnd}
       onChange={(pos, size) => {
@@ -206,51 +205,18 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       }}
       headerActions={
         <>
-          <button
-            type="button"
-            onClick={handleToggleMouse}
-            disabled={isTogglingMouse}
-            className={`p-1.5 rounded transition-colors ${mouseMode === 'on' ? 'text-green-400 bg-green-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-            title={mouseMode === 'on' ? "鼠标: 开 (可滚动)" : "鼠标: 关 (可复制)"}
+          <div
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded"
+            title={networkLatency !== null ? `Latency: ${networkLatency}ms` : 'Offline'}
           >
-            {isTogglingMouse ? <Loader2 size={14} className="animate-spin" /> : <Mouse size={14} />}
-          </button>
-          {onCapturePane && (
-            <button
-              onClick={onCapturePane}
-              disabled={isCapturing}
-              className="p-1.5 rounded text-yellow-400 hover:bg-gray-700 disabled:opacity-40"
-              title="Capture pane output"
-            >
-              {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
-            </button>
-          )}
-          <button
-            onClick={handleCorrectEnglish}
-            disabled={!promptText.trim() || isCorrectingEnglish}
-            className="p-1.5 rounded text-purple-400 hover:bg-gray-700 disabled:opacity-40 transition-colors"
-            title="Correct English with AI"
-          >
-            {isCorrectingEnglish ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowHistory(v => !v)}
-            className={`p-1.5 rounded transition-colors ${showHistory ? 'text-orange-400 bg-orange-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-            title="Command history"
-          >
-            <History size={14} />
-          </button>
-          <button
-            onClick={onReadOnlyToggle}
-            className={`p-1.5 rounded transition-colors ${readOnly ? 'text-red-400 bg-red-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-            title={readOnly ? 'Read-only ON (click to disable)' : 'Enable read-only'}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-          </button>
+            {networkStatus === 'excellent' && <Wifi size={12} className="text-green-400" />}
+            {networkStatus === 'good' && <Wifi size={12} className="text-yellow-400" />}
+            {networkStatus === 'poor' && <Wifi size={12} className="text-orange-400" />}
+            {networkStatus === 'offline' && <WifiOff size={12} className="text-red-400" />}
+            <span className="text-xs text-gray-500 font-mono">
+              {networkLatency !== null ? `${networkLatency}ms` : 'offline'}
+            </span>
+          </div>
         </>
       }
     >
@@ -258,6 +224,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
         <div className="flex-1 flex flex-col min-h-0">
           <div className="relative flex-1 flex flex-col min-h-0">
             <textarea
+              id="prompt-textarea"
               ref={textareaRef}
               value={promptText}
               onChange={(e) => {
@@ -267,8 +234,32 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               }}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              onKeyDown={async (e) => {
+                
+
+  
+               if ((
+                  e.key === 'Escape'|| e.key === 'Backspace' || e.key === 'Enter'
+                ) && !promptText) {
+                  e.preventDefault();
+
+                  const key_map = {
+                      "backspace": "BSpace",
+                      "enter": "Enter",
+                      "escape": "Escape",
+                      "esc": "Escape",
+                      "tab": "Tab",
+                      "up": "Up",
+                      "down": "Down",
+                      "left": "Left",
+                      "right": "Right",
+                      "space": "Space",
+                  }
+                  await fetch(getApiUrl('/api/tmux/send-keys'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: key_map[e.key.toLowerCase()] }) });
+                } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !promptText) {
+                  e.preventDefault();
+                  await fetch(getApiUrl('/api/tmux/send-keys'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: "C-c" }) });
+                } else  if (e.key === 'Enter' && e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   handleSendPrompt();
                 } else if (e.key === 'ArrowUp') {
@@ -307,14 +298,13 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               disabled={isSending}
             />
           </div>
-          {showArrows && !isFocused && (
+          {showArrows && (
             <div className="flex items-center justify-center gap-1.5 mt-1.5">
               {[
                 { label: '←', key: 'Left' },
                 { label: '↓', key: 'Down' },
                 { label: '↑', key: 'Up' },
                 { label: '→', key: 'Right' },
-                { label: 'Esc', key: 'escape' },
               ].map(b => (
                 <button key={b.key} type="button" onClick={async () => {
                   const keyMap: Record<string, string> = { 'Left': 'Left', 'Down': 'Down', 'Up': 'Up', 'Right': 'Right', 'Enter': 'Enter', 'escape': 'Escape', 'ctrl+c': 'C-c' };
@@ -346,26 +336,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               {queueLen > 0 && <span className="text-orange-400 animate-pulse">· Q:{queueLen}</span>}
             </div>
             <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={async () => {
-                  await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: 'Enter' }) });
-                }}
-                className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
-                title="Send Enter"
-              >
-                Enter
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: 'C-c' }) });
-                }}
-                className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
-                title="Send Ctrl+C"
-              >
-                ^C
-              </button>
               <button type="button" onClick={() => setShowArrows(v => !v)}
                 className={`p-1.5 rounded-md transition-colors shadow-lg ${showArrows ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                 title="Arrow keys"
@@ -402,37 +372,145 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
             </div>
           </div>
 
-          {correctedText && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setCorrectedText('')}>
-              <div className="bg-gray-900 border border-purple-700 rounded-lg p-4 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-purple-400" />
-                    <span className="text-sm text-purple-300 font-medium">Corrected Text</span>
-                  </div>
-                  <button onClick={() => setCorrectedText('')} className="text-gray-400 hover:text-white"><X size={16} /></button>
-                </div>
-                <p className="text-sm text-white mb-4 whitespace-pre-wrap bg-black/30 p-3 rounded-md">{correctedText}</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setCorrectedText('')} className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors">Cancel</button>
-                  <button onClick={handleAcceptCorrection} className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded-md transition-colors flex items-center justify-center gap-2">
-                    <Check size={14} /> Use This
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Bottom action buttons */}
+          <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-gray-700/50">
+            {onToggleMouse && (
+              <button
+                type="button"
+                onClick={onToggleMouse}
+                disabled={isTogglingMouse}
+                className={`p-1.5 rounded transition-colors ${mouseMode === 'on' ? 'text-green-400 bg-green-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+                title={mouseMode === 'on' ? "鼠标: 开 (可滚动)" : "鼠标: 关 (可复制)"}
+              >
+                {isTogglingMouse ? <Loader2 size={14} className="animate-spin" /> : <Mouse size={14} />}
+              </button>
+            )}
+            {hasCapturePermission && onCapturePane && (
+              <button
+                onClick={onCapturePane}
+                disabled={isCapturing}
+                className="p-1.5 rounded text-yellow-400 hover:text-yellow-300 hover:bg-gray-700 disabled:opacity-40"
+                title="Capture pane output"
+              >
+                {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Clipboard size={14} />}
+              </button>
+            )}
+            {hasEditPermission && onEditPane && (
+              <button
+                onClick={onEditPane}
+                className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                title="Edit pane"
+              >
+                <Pencil size={14} />
+              </button>
+            )}
+            <button
+              onClick={handleCorrectEnglish}
+              disabled={!promptText.trim() || isCorrectingEnglish}
+              className="p-1.5 rounded text-purple-400 hover:bg-gray-700 disabled:opacity-40 transition-colors"
+              title="Correct English with AI"
+            >
+              {isCorrectingEnglish ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowHistory(v => !v)}
+              className={`p-1.5 rounded transition-colors ${showHistory ? 'text-orange-400 bg-orange-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+              title="Command history"
+            >
+              <History size={14} />
+            </button>
+            {onReload && (
+              <button
+                onClick={onReload}
+                className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                title="Reload page"
+              >
+                <RotateCcw size={14} />
+              </button>
+            )}
+            {hasRestartPermission && onRestart && (
+              <button
+                onClick={onRestart}
+                disabled={isRestarting}
+                className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                title="Restart tmux and ttyd"
+              >
+                <Power size={14} className={isRestarting ? 'animate-pulse' : ''} />
+              </button>
+            )}
+          </div>
+
         </div>
       </form>
+      
     </FloatingPanel>
+{correctedText && (
+  <div 
+    className="fixed z-[999999] animate-in fade-in zoom-in duration-200"
+    style={{ 
+      right: 40,
+      top: 40, // 增加一点间距
+      width: Math.max(currentSize.width, 320), // 确保不至于太窄
+    }}
+  >
+    {/* 主容器：玻璃拟态效果 */}
+    <div className="bg-gray-950/90 border border-purple-500/30 rounded-xl shadow-2xl backdrop-blur-md overflow-hidden flex flex-col p-4 ring-1 ring-white/10">
+      
+      {/* 头部：简洁且有品牌感 */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-1 bg-purple-500/20 rounded-md">
+            <Sparkles size={14} className="text-purple-400" />
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-purple-300/80">
+            AI Suggestion
+          </span>
+        </div>
+        <button 
+          onClick={() => setCorrectedText('')} 
+          className="p-1 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* 内容区：高对比度、易读 */}
+      <div className="relative group mb-4">
+        <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg blur opacity-50"></div>
+        <p className="relative text-sm text-gray-100 leading-relaxed whitespace-pre-wrap bg-black/40 border border-white/5 p-3 rounded-lg max-h-48 overflow-y-auto custom-scrollbar">
+          {correctedText}
+        </p>
+      </div>
+
+      {/* 操作区：主次分明 */}
+      <div className="flex gap-3">
+        <button 
+          onClick={() => setCorrectedText('')} 
+          className="flex-1 px-3 py-2 text-gray-400 hover:text-white text-xs font-medium transition-colors border border-transparent hover:border-white/10 rounded-lg"
+        >
+          Discard
+        </button>
+        <button 
+          onClick={handleAcceptCorrection} 
+          className="flex-[2] px-3 py-2 bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(147,51,234,0.3)]"
+        >
+          <Check size={14} strokeWidth={3} />
+          Apply Correction
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
     {/* 历史记录面板 */}
     {showHistory && commandHistory.length > 0 && (
       <div 
         className="fixed bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl backdrop-blur-sm z-[999999] flex flex-col max-h-80"
         style={{ 
-          left: currentPos.x,
-          bottom: window.innerHeight - currentPos.y + 8,
+      right: 40,
+      top: 40, // 增加一点间距
           width: currentSize.width
         }}
       >
