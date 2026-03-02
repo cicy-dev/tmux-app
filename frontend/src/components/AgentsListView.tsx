@@ -341,6 +341,7 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
                 </button>
               </div>
               <iframe
+                loading="lazy"
                 sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
                 key={iframeKeys[agent.name] || 0}
                 src={`https://ttyd-proxy.cicy.de5.net/ttyd/${agent.name}/?token=${token}&mode=1`}

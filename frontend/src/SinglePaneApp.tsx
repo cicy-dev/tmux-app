@@ -533,7 +533,7 @@ const App: React.FC = () => {
           {isInteracting && <div className="absolute inset-0 z-20"></div>}
             {paneWorkspace && (
               <div className="absolute inset-0" style={{marginTop: '40px', display: activeTab === 'Code' ? 'block' : 'none'}}>
-                <iframe sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts" onLoad={() => setIsCodeServerLoading(false)} src={`https://code.cicy.de5.net/?folder=${paneWorkspace}`} className="w-full h-full"></iframe>
+                <iframe loading="lazy" sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts" onLoad={() => setIsCodeServerLoading(false)} src={`https://code.cicy.de5.net/?folder=${paneWorkspace}`} className="w-full h-full"></iframe>
                 {isDragging && <div className="absolute inset-0 z-20"></div>}
               </div>
             )}
@@ -687,7 +687,7 @@ const App: React.FC = () => {
         ></div>
         <div id="mainTtyd" className="absolute inset-0" style={{width: `${ttydWidth}px`, left: `calc(100vw - ${ttydWidth}px)`}}>
           {isTtydLoading && <div className="absolute inset-0 flex items-center justify-center bg-gray-900"><Loader2 className="animate-spin" /></div>}
-          <iframe sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts" onLoad={() => setIsTtydLoading(false)} src={`https://ttyd-proxy.cicy.de5.net/ttyd/${BOT_NAME}/?token=${token}&mode=1`} className="w-full h-full"></iframe>
+          <iframe loading="lazy" sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts" onLoad={() => setIsTtydLoading(false)} src={`https://ttyd-proxy.cicy.de5.net/ttyd/${BOT_NAME}/?token=${token}&mode=1`} className="w-full h-full"></iframe>
           {isDragging && <div className="absolute inset-0 z-20"></div>}
           {isInteracting && <div className="absolute inset-0 z-20"></div>}
         </div>
