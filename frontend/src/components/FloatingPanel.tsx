@@ -14,6 +14,7 @@ interface FloatingPanelProps {
   onClose?: () => void;
   headerActions?: ReactNode;
   onDraggingChange?: (isDragging: boolean) => void;
+  disableDrag?: boolean;
 }
 
 export const FloatingPanel: React.FC<FloatingPanelProps> = ({
@@ -27,7 +28,8 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   onChange,
   onClose,
   headerActions,
-  onDraggingChange
+  onDraggingChange,
+  disableDrag = false
 }) => {
   const [position, setPosition] = useState<Position>(initialPosition);
   const [size, setSize] = useState<Size>(initialSize);
@@ -60,6 +62,7 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
 
   // --- Drag Handlers ---
   const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    if (disableDrag) return;
     // Check if target is a button or inside a button (to allow clicking header actions)
     if ((e.target as HTMLElement).closest('button')) return;
     // Also allow interacting with inputs/selects if we put them in header
@@ -150,20 +153,23 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   return (
     <div
       ref={panelRef}
-      className="fixed flex flex-col bg-gray-900/95 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl overflow-hidden touch-none"
+      className="flex flex-col bg-gray-900/95 backdrop-blur-md border border-gray-700 shadow-2xl overflow-hidden touch-none"
       style={{
-        left: position.x,
-        top: position.y,
-        width: size.width,
-        height: size.height,
+        position: disableDrag ? 'relative' : 'fixed',
+        left: disableDrag ? 'auto' : position.x,
+        top: disableDrag ? 'auto' : position.y,
+        width: disableDrag ? '100%' : size.width,
+        height: disableDrag ? '100%' : size.height,
         minHeight: '140px',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
         zIndex: 999999,
+        borderRadius: disableDrag ? 0 : '0.5rem',
       }}
     >
       {/* Header / Drag Handle */}
       <div
-        className="h-10 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-3 cursor-move select-none touch-none shrink-0"
+        className="h-10 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-3 select-none touch-none shrink-0"
+        style={{cursor: disableDrag ? 'default' : 'move'}}
         onMouseDown={handleStartDrag}
         onTouchStart={handleStartDrag}
       >

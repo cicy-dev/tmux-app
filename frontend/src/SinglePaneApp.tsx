@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import { Terminal,Mouse, Loader2, Clipboard, X, Keyboard, Mic, RotateCcw, Power, Pencil, Settings } from 'lucide-react';
 import { TtydFrame, TtydFrameHandle } from './components/TtydFrame';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
@@ -75,10 +76,14 @@ const App: React.FC = () => {
     const saved = localStorage.getItem(`${BOT_NAME}_ttydWidth`);
     return saved ? parseInt(saved) : 640;
   });
+  const [ttydPreviewHeight, setTtydPreviewHeight] = useState(() => {
+    const saved = localStorage.getItem(`${BOT_NAME}_ttydPreviewHeight`);
+    return saved ? parseInt(saved) : 300;
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [isCodeServerLoading, setIsCodeServerLoading] = useState(true);
   const [isTtydLoading, setIsTtydLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'Code' | 'Services' | 'Docs' | 'Preview' | 'TTYD' | 'Agents' | 'Settings'>(() => {
+  const [activeTab, setActiveTab] = useState<'Code' | 'Services' | 'Docs' | 'Preview' | 'Agents' | 'Settings'>(() => {
     const saved = localStorage.getItem(`${BOT_NAME}_activeTab`);
     return (saved as any) || 'Settings';
   });
@@ -96,6 +101,10 @@ const App: React.FC = () => {
   });
   const [boundAgents, setBoundAgents] = useState<string[]>([]);
   const [agentCaptureOpen, setAgentCaptureOpen] = useState(false);
+  const [showTtydInCode, setShowTtydInCode] = useState(() => {
+    const saved = localStorage.getItem(`${BOT_NAME}_showTtydInCode`);
+    return saved === 'true';
+  });
 
   const [isInteracting, setIsInteracting] = useState(false);
   const [multiTerminalMode, setMultiTerminalMode] = useState(false);
@@ -286,14 +295,17 @@ const App: React.FC = () => {
     const poll = async () => {
       const startTime = performance.now();
       try {
-        const r = await fetch(`${API_BASE}/api/tmux/pane/agent/status/${encodeURIComponent(BOT_NAME)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const { data } = await axios.get(
+          `${API_BASE}/api/tmux/status?id=${encodeURIComponent(BOT_NAME)}`,
+          {
+            headers: { 'Authorization': `Bearer ${token}` },
+            timeout: 1500
+          }
+        );
         const latency = Math.round(performance.now() - startTime);
-        const d = await r.json();
-        console.debug(`[agent-status] ${d.status} | ${d.raw}`, d);
-        setAgentStatus(d.status);
-        if (d.contextUsage != null) setContextUsage(d.contextUsage);
+        console.debug(`[agent-status] ${data.status} | ${data.raw}`, data);
+        setAgentStatus(data.status);
+        if (data.contextUsage != null) setContextUsage(data.contextUsage);
         setNetworkLatency(latency);
         setNetworkStatus(latency < 100 ? 'excellent' : latency < 300 ? 'good' : 'poor');
       } catch {
@@ -546,7 +558,7 @@ const App: React.FC = () => {
 
         <div id="mainCodeServer" className="absolute inset-0 bg-white" style={{width: `calc(100vw - ${ttydWidth}px - 4px)`}}>
           <div className="absolute top-0 left-0 right-0 h-10 bg-gray-800 flex items-center gap-1 px-2 z-10">
-            {([ 'Code','Settings', 'Agents', 'Preview', 'TTYD'] as const).map(tab => (
+            {([ 'Code','Settings', 'Agents', 'Preview'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => {
@@ -563,7 +575,87 @@ const App: React.FC = () => {
           {isInteracting && <div className="absolute inset-0 z-20"></div>}
             {paneWorkspace && (
               <div className="absolute inset-0" style={{marginTop: '40px', display: activeTab === 'Code' ? 'block' : 'none'}}>
-                <iframe loading="lazy" sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts" onLoad={() => setIsCodeServerLoading(false)} src={`https://code.cicy.de5.net/?folder=${paneWorkspace}`} className="w-full h-full"></iframe>
+                <iframe loading="lazy" sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts" onLoad={() => setIsCodeServerLoading(false)} src={`https://code.cicy.de5.net/?folder=${paneWorkspace}`} className="code-server-iframe w-full h-full" style={{height: paneTtydPreview && showTtydInCode ? `calc(100% - ${ttydPreviewHeight}px)` : '100%'}}></iframe>
+                {paneTtydPreview && showTtydInCode && (
+                  <>
+                    <div 
+                      className="absolute left-0 right-0 h-1 bg-gray-600 hover:bg-blue-500 cursor-row-resize z-10"
+                      style={{bottom: `${ttydPreviewHeight}px`}}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                        const startY = e.clientY;
+                        const startHeight = ttydPreviewHeight;
+                        const onMouseMove = (e: MouseEvent) => {
+                          const newHeight = Math.max(100, Math.min(window.innerHeight - 200, startHeight + (startY - e.clientY)));
+                          setTtydPreviewHeight(newHeight);
+                        };
+                        const onMouseUp = () => {
+                          setIsDragging(false);
+                          localStorage.setItem(`${BOT_NAME}_ttydPreviewHeight`, ttydPreviewHeight.toString());
+                          document.removeEventListener('mousemove', onMouseMove);
+                          document.removeEventListener('mouseup', onMouseUp);
+                        };
+                        document.addEventListener('mousemove', onMouseMove);
+                        document.addEventListener('mouseup', onMouseUp);
+                      }}
+                    ></div>
+                    {isDragging && <div className="absolute inset-0 z-20"></div>}
+                    <div className="ttyd-preview-container absolute bottom-0 left-0 right-0 bg-gray-800" style={{height: `${ttydPreviewHeight}px`}}>
+                      <div className="h-8 bg-gray-800 border-t border-gray-700 flex items-center justify-between px-3">
+                        <span className="text-xs text-gray-400">Terminal Preview</span>
+                        <div className="flex gap-2">
+                          <button
+                            className="show-btn hidden text-blue-400 hover:text-blue-300 text-xs"
+                            onClick={() => {
+                              const container = document.querySelector('.ttyd-preview-container') as HTMLElement;
+                              const codeIframe = document.querySelector('.code-server-iframe') as HTMLElement;
+                              const iframe = container?.querySelector('iframe') as HTMLElement;
+                              const minBtn = container?.querySelector('.min-btn') as HTMLElement;
+                              const showBtn = container?.querySelector('.show-btn') as HTMLElement;
+                              if (iframe && minBtn && showBtn && container && codeIframe) {
+                                container.style.height = `${ttydPreviewHeight}px`;
+                                codeIframe.style.height = `calc(100% - ${ttydPreviewHeight}px)`;
+                                iframe.style.display = 'block';
+                                minBtn.style.display = 'block';
+                                showBtn.style.display = 'none';
+                              }
+                            }}
+                          >
+                            Show
+                          </button>
+                          <button
+                            className="min-btn text-gray-400 hover:text-white"
+                            style={{marginTop: '-10px'}}
+                            title="Minimize"
+                            onClick={() => {
+                              const container = document.querySelector('.ttyd-preview-container') as HTMLElement;
+                              const codeIframe = document.querySelector('.code-server-iframe') as HTMLElement;
+                              const iframe = container?.querySelector('iframe') as HTMLElement;
+                              const minBtn = container?.querySelector('.min-btn') as HTMLElement;
+                              const showBtn = container?.querySelector('.show-btn') as HTMLElement;
+                              if (iframe && minBtn && showBtn && container && codeIframe) {
+                                container.style.height = '32px';
+                                codeIframe.style.height = 'calc(100% - 32px)';
+                                iframe.style.display = 'none';
+                                minBtn.style.display = 'none';
+                                showBtn.style.display = 'block';
+                              }
+                            }}
+                          >
+                            <span className="text-xs">_</span>
+                          </button>
+                        </div>
+                      </div>
+                      <iframe
+                        sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+                        src={`https://ttyd-proxy.cicy.de5.net/ttyd/${paneTtydPreview.replace(':main.0', '')}?token=${token}&m=1&mode=1`}
+                        className="w-full"
+                        style={{height: 'calc(100% - 32px)'}}
+                      />
+                    </div>
+                  </>
+                )}
                 {isDragging && <div className="absolute inset-0 z-20"></div>}
               </div>
             )}
@@ -620,47 +712,6 @@ const App: React.FC = () => {
             <div style={{marginTop: '40px', height: 'calc(100% - 40px)'}}>
               <AgentsListView paneId={BOT_NAME} token={token} ttydPreview={paneTtydPreview} isDragging={isDragging} onAgentsChange={(agents) => setBoundAgents(agents)} onCaptureOpen={setAgentCaptureOpen} />
             </div>
-          )}
-          {activeTab === 'TTYD' && (
-            <>
-              {paneTtydPreview ? (
-                <div 
-                  className="absolute inset-0" 
-                  style={{marginTop: '40px'}}
-                  onMouseLeave={(e) => {
-                    const target = e.currentTarget.querySelector('.ttyd-mask') as HTMLElement;
-                    if (target) target.style.display = 'block';
-                  }}
-                >
-                  <div className="relative w-full h-full">
-                    <iframe
-                      sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
-                      src={`https://ttyd-proxy.cicy.de5.net/ttyd/${paneTtydPreview.replace(':main.0', '')}?token=${token}&m=1&mode=1`}
-                      className="w-full h-full"
-                    />
-                    <div 
-                      className="ttyd-mask absolute inset-0 bg-transparent z-10"
-                      style={{display: 'none', pointerEvents: 'auto'}}
-                      onClick={(e) => {
-                        console.log('[TTYD] Dispatching selectPane event:', paneTtydPreview);
-                        window.dispatchEvent(new CustomEvent('selectPane', { detail: { paneId: paneTtydPreview } }));
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                  {isDragging && <div className="absolute inset-0 z-20"></div>}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full bg-gray-900" style={{marginTop: '40px'}}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-600 mb-4">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                  </svg>
-                  <p className="text-gray-500 text-sm">No TTYD preview found</p>
-                </div>
-              )}
-            </>
           )}
           {activeTab === 'Settings' && (
             <div style={{marginTop: '40px', height: 'calc(100% - 40px)'}}>
@@ -734,7 +785,7 @@ const App: React.FC = () => {
           }}
         ></div>
         <div 
-          id="mainTtyd" 
+          id="maicnTtyd" 
           className="absolute inset-0" 
           style={{width: `${ttydWidth}px`, left: `calc(100vw - ${ttydWidth}px)`}}
           onMouseLeave={(e) => {
@@ -751,6 +802,7 @@ const App: React.FC = () => {
               onLoad={() => setIsTtydLoading(false)} 
               src={`https://ttyd-proxy.cicy.de5.net/ttyd/${BOT_NAME}/?token=${token}&mode=1`} 
               className="w-full h-full"
+              style={{height: MODE === 'ttyd' && settings.showPrompt && hasPermission('prompt') ? `calc(100% - ${settings.panelSize.height}px)` : '100%'}}
             />
             <div 
               className="ttyd-mask absolute inset-0 bg-transparent z-10"
@@ -763,6 +815,46 @@ const App: React.FC = () => {
           </div>
           {isDragging && <div className="absolute inset-0 z-20"></div>}
           {isInteracting && <div className="absolute inset-0 z-20"></div>}
+          {MODE === 'ttyd' && settings.showPrompt && hasPermission('prompt') && (
+            <div className="absolute bottom-0 left-0 right-0" style={{height: `${settings.panelSize.height}px`}}>
+              <CommandPanel
+                ref={commandPanelRef}
+                paneTarget={TMUX_TARGET}
+                title={paneTitle || BOT_NAME}
+                token={token}
+                panelPosition={{x: 0, y: 0}}
+                panelSize={{width: ttydWidth, height: settings.panelSize.height}}
+                readOnly={readOnly}
+                onReadOnlyToggle={() => setReadOnly(v => !v)}
+                onInteractionStart={() => setIsInteracting(true)}
+                onInteractionEnd={() => setIsInteracting(false)}
+                onChange={(pos, size) => setSettings(prev => ({ ...prev, panelSize: size }))}
+                onCapturePane={handleCapturePane}
+                isCapturing={isCapturing}
+                canSend={agentStatus === 'idle' || agentStatus === 'wait_startup'}
+                agentStatus={agentStatus}
+                contextUsage={contextUsage}
+                mouseMode={mouseMode}
+                onDraggingChange={setIsDragging}
+                isTogglingMouse={isTogglingMouse}
+                onToggleMouse={handleToggleMouse}
+                onReload={() => {
+                  if (mainIframeRef.current) {
+                    mainIframeRef.current.src = mainIframeRef.current.src;
+                  }
+                }}
+                boundAgents={boundAgents}
+                onRestart={handleRestart}
+                isRestarting={isRestarting}
+                hasEditPermission={hasPermission('agent_manage')}
+                hasRestartPermission={hasPermission('prompt')}
+                hasCapturePermission={hasPermission('ttyd_read')}
+                networkLatency={networkLatency}
+                networkStatus={networkStatus}
+                disableDrag={true}
+              />
+            </div>
+          )}
         </div>
 
       </div>
@@ -814,7 +906,7 @@ const App: React.FC = () => {
 
 
       {/* Floating command panel */}
-      {settings.showPrompt && hasPermission('prompt') && (
+      {MODE !== 'ttyd' && settings.showPrompt && hasPermission('prompt') && (
         <CommandPanel
           ref={commandPanelRef}
           paneTarget={TMUX_TARGET}

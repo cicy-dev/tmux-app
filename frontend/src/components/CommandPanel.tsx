@@ -37,6 +37,7 @@ interface CommandPanelProps {
   onDraggingChange?: (isDragging: boolean) => void;
   boundAgents?: string[];
   onPaneTargetChange?: (target: string) => void;
+  disableDrag?: boolean;
 }
 
 export interface CommandPanelHandle {
@@ -75,6 +76,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   onDraggingChange,
   boundAgents = [],
   onPaneTargetChange,
+  disableDrag = false,
 }, ref) => {
   const [selectedPane, setSelectedPane] = useState(paneTarget);
   const [promptText, setPromptText] = useState('');
@@ -260,6 +262,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
         onChange(pos, size);
       }}
       onDraggingChange={onDraggingChange}
+      disableDrag={disableDrag}
       headerActions={
         <>
           <button
