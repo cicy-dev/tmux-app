@@ -31,6 +31,7 @@ export const TerminalControls: React.FC<TerminalControlsProps> = ({
       )}
       {onCapture && (
         <button
+          type="button"
           onClick={onCapture}
           disabled={isCapturing}
           className="p-1 rounded text-yellow-400 hover:text-yellow-300 hover:bg-gray-700 disabled:opacity-40"

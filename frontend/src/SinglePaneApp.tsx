@@ -280,40 +280,31 @@ const App: React.FC = () => {
     }
   }, [activeTab, token]);
 
-  // --- Agent status polling ---
+  // --- Agent status polling (also updates network status) ---
   useEffect(() => {
     if (!token) return;
-    const poll = () => fetch(`${API_BASE}/api/tmux/pane/agent/status/${encodeURIComponent(BOT_NAME)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    }).then(r => r.json()).then(d => { console.debug(`[agent-status] ${d.status} | ${d.raw}`, d); setAgentStatus(d.status); if (d.contextUsage != null) setContextUsage(d.contextUsage); }).catch(() => {});
-    poll();
-    const id = setInterval(poll, 1000);
-    return () => clearInterval(id);
-  }, [token]);
-
-  // --- Network health ---
-  useEffect(() => {
-    const checkHealth = async () => {
+    const poll = async () => {
       const startTime = performance.now();
       try {
-        const response = await fetch(`${API_BASE}/api/health`, { method: 'GET', cache: 'no-cache' });
+        const r = await fetch(`${API_BASE}/api/tmux/pane/agent/status/${encodeURIComponent(BOT_NAME)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         const latency = Math.round(performance.now() - startTime);
-        if (response.ok) {
-          setNetworkLatency(latency);
-          setNetworkStatus(latency < 100 ? 'excellent' : latency < 300 ? 'good' : 'poor');
-        } else {
-          setNetworkStatus('offline');
-          setNetworkLatency(null);
-        }
+        const d = await r.json();
+        console.debug(`[agent-status] ${d.status} | ${d.raw}`, d);
+        setAgentStatus(d.status);
+        if (d.contextUsage != null) setContextUsage(d.contextUsage);
+        setNetworkLatency(latency);
+        setNetworkStatus(latency < 100 ? 'excellent' : latency < 300 ? 'good' : 'poor');
       } catch {
         setNetworkStatus('offline');
         setNetworkLatency(null);
       }
     };
-    checkHealth();
-    const interval = setInterval(checkHealth, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    poll();
+    const id = setInterval(poll, 2000);
+    return () => clearInterval(id);
+  }, [token]);
 
   useEffect(() => {
     if (toast) {
