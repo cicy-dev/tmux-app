@@ -52,6 +52,7 @@ interface CommandPanelProps {
   mode?: string | null;
   onShowHistory?: (history: string[], onSelect: (cmd: string) => void) => void;
   onShowCorrection?: (result: [string, string]) => void;
+  onCorrectionLoading?: (loading: boolean) => void;
 }
 
 export interface CommandPanelHandle {
@@ -97,6 +98,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   mode = null,
   onShowHistory,
   onShowCorrection,
+  onCorrectionLoading,
 }, ref) => {
   const [selectedPane, setSelectedPane] = useState(paneTarget);
   const [promptText, setPromptText] = useState('');
@@ -163,7 +165,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
 
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
-  const [correctedResult, setCorrectedResult] = useState<string | null>(null);
+  const [correctedResult, setCorrectedResult] = useState<[string, string] | null>(null);
   const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
@@ -191,7 +193,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     
     // If prompt is empty but correction result exists, send the corrected English
     if (!cmd && correctedResult) {
-      const correctedCmd = correctedResult;
+      const correctedCmd = correctedResult[0]; // Use English part
       const newHistory = [correctedCmd, ...commandHistory.filter(c => c !== correctedCmd)].slice(0, 50);
       setCommandHistory(newHistory);
       saveCommandHistory(newHistory);
@@ -221,7 +223,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     if (autoCorrectEnabled && token) {
       setPromptText('');
       saveDraft('');
-      setIsCorrectingEnglish(true);
+      setIsCorrectingEnglish(true); if (onCorrectionLoading) onCorrectionLoading(true);
       try {
         const res = await fetch(getApiUrl('/api/correctEnglish'), {
           method: 'POST',
@@ -229,7 +231,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
           body: JSON.stringify({ text: cmd })
         });
         const data = await res.json();
-        if (data.success && data.result && typeof data.result === "string") {
+        if (data.success && data.result && Array.isArray(data.result)) {
           setCorrectedResult(data.result);
           if (onShowCorrection) {
             onShowCorrection(data.result);
@@ -238,7 +240,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       } catch (e) { 
         console.error('Correct English error:', e); 
       } finally { 
-        setIsCorrectingEnglish(false); 
+        setIsCorrectingEnglish(false); if (onCorrectionLoading) onCorrectionLoading(false); 
       }
       return;
     }
@@ -278,7 +280,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
 
   const handleCorrectEnglish = async () => {
     if (!promptText.trim() || isCorrectingEnglish || !token) return;
-    setIsCorrectingEnglish(true);
+    setIsCorrectingEnglish(true); if (onCorrectionLoading) onCorrectionLoading(true);
     setCorrectedResult(null);
     try {
       const res = await fetch(getApiUrl('/api/correctEnglish'), {
@@ -288,7 +290,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       });
       const data = await res.json();
       console.log('Correct English result:', data);
-      if (data.success && data.result && typeof data.result === "string") {
+      if (data.success && data.result && Array.isArray(data.result)) {
         // result is [English, Chinese]
         setCorrectedResult(data.result);
         if (onShowCorrection) {
@@ -298,7 +300,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     } catch (e) { 
       console.error('Correct English error:', e); 
     } finally { 
-      setIsCorrectingEnglish(false); 
+      setIsCorrectingEnglish(false); if (onCorrectionLoading) onCorrectionLoading(false); 
     }
   };
 
@@ -380,6 +382,12 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               </button>
             </>
           )}
+          {isCorrectingEnglish && (
+            <div className="flex items-center gap-1 px-2 py-1 text-purple-400 text-xs">
+              <Loader2 size={12} className="animate-spin" />
+              <span>Correcting...</span>
+            </div>
+          )}
           <div
             className="flex items-center gap-1 px-1.5 py-0.5 rounded"
             title={networkLatency !== null ? `Latency: ${networkLatency}ms` : 'Offline'}
@@ -412,11 +420,32 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               onKeyDown={async (e) => {
                 // Ctrl+Enter = trigger correction or send result
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
+                  console.log('Cmd+Enter pressed', {promptText, correctedResult, token});
                   e.preventDefault();
                   
-                  // If no text but has correction result, send it
+                  // If no text but has correction result
                   if (!promptText.trim() && correctedResult) {
-                    const cmd = correctedResult;
+                    // Cmd+Shift+Enter = send Chinese
+                    if (e.shiftKey) {
+                      const cmd = correctedResult[1];
+                      const newHistory = [cmd, ...commandHistory.filter(c => c !== cmd)].slice(0, 50);
+                      setCommandHistory(newHistory);
+                      saveCommandHistory(newHistory);
+                      setCorrectedResult(null);
+                      if (onShowCorrection) {
+                        onShowCorrection(null as any);
+                      }
+                      setIsSending(true);
+                      setSendSuccess(false);
+                      sendCommandToTmux(cmd, selectedPane)
+                        .then(() => { setSendSuccess(true); setTimeout(() => setSendSuccess(false), 2000); })
+                        .catch(console.error)
+                        .finally(() => { setIsSending(false); setTimeout(() => textareaRef.current?.focus(), 50); });
+                      return;
+                    }
+                    
+                    // Cmd+Enter = send English
+                    const cmd = correctedResult[0];
                     const newHistory = [cmd, ...commandHistory.filter(c => c !== cmd)].slice(0, 50);
                     setCommandHistory(newHistory);
                     saveCommandHistory(newHistory);
@@ -435,10 +464,12 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                   
                   // Otherwise, trigger correction
                   const cmd = promptText.trim();
+                  console.log('Triggering correction', {cmd, token, hasCallback: !!onCorrectionLoading});
                   if (cmd && token) {
                     setPromptText('');
                     saveDraft('');
-                    setIsCorrectingEnglish(true);
+                    console.log('Setting loading true');
+                    setIsCorrectingEnglish(true); if (onCorrectionLoading) onCorrectionLoading(true);
                     fetch(getApiUrl('/api/correctEnglish'), {
                       method: 'POST',
                       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -446,7 +477,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                     })
                       .then(res => res.json())
                       .then(data => {
-                        if (data.success && data.result && typeof data.result === 'string') {
+                        if (data.success && data.result && Array.isArray(data.result)) {
                           setCorrectedResult(data.result);
                           if (onShowCorrection) {
                             onShowCorrection(data.result);

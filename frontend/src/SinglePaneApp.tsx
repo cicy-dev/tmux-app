@@ -107,7 +107,8 @@ const App: React.FC = () => {
   const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const [historyData, setHistoryData] = useState<{history: string[], onSelect: (cmd: string) => void} | null>(null);
   const [showCorrectionResult, setShowCorrectionResult] = useState(false);
-  const [correctionData, setCorrectionData] = useState<string | null>(null);
+  const [correctionData, setCorrectionData] = useState<[string, string] | null>(null);
+  const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [agentCaptureOpen, setAgentCaptureOpen] = useState(false);
   const [showTtydInCode, setShowTtydInCode] = useState(() => {
     const saved = localStorage.getItem(`${BOT_NAME}_showTtydInCode`);
@@ -134,6 +135,17 @@ const App: React.FC = () => {
   const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
 
   const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
+
+  // Close correction panel with Esc key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCorrectionResult) {
+        setShowCorrectionResult(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCorrectionResult]);
 
   const [isTogglingMouse, setIsTogglingMouse] = useState(false);
 
@@ -873,66 +885,81 @@ const App: React.FC = () => {
           {MODE === 'ttyd' && hasPermission('prompt') && (
             <div className="absolute bottom-0 left-0 right-0" style={{height: `${commandPanelHeight}px`}}>
               {/* Correction Result */}
-              {showCorrectionResult && correctionData && (
+              {showCorrectionResult && correctionData ? (
                 <div style={{position: 'absolute', bottom: `${commandPanelHeight + 4}px`, left: 0, right: 0, height: "120px"}}>
                   <div style={{width: '100%', height: '100%', backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', position: 'relative'}}>
-                    <button 
-                      onClick={() => setShowCorrectionResult(false)}
-                      style={{position: 'absolute', top: '8px', right: '8px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', transition: 'all 0.2s', zIndex: 10}}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#374151';
-                        e.currentTarget.style.color = '#e5e7eb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#6b7280';
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
+                    {/* Top bar */}
+                    <div style={{height: '24px', backgroundColor: '#111827', borderBottom: '1px solid #374151', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px'}}>
+                      <span style={{fontSize: '11px', color: '#9ca3af', fontWeight: 500}}>Correction Result</span>
+                      <button 
+                        onClick={() => setShowCorrectionResult(false)}
+                        style={{color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', borderRadius: '4px', transition: 'all 0.2s', display: 'flex', alignItems: 'center'}}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#374151';
+                          e.currentTarget.style.color = '#e5e7eb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#6b7280';
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
                     <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                      <div 
+                    <div 
                         style={{flex: 1, padding: '16px', backgroundColor: '#111827', borderBottom: '1px solid #374151', overflowY: 'auto', position: 'relative', display: 'flex', alignItems: 'center'}}
                         onMouseEnter={(e) => {
                           const btns = e.currentTarget.querySelector('.action-btns') as HTMLElement;
-                          if (btns) btns.style.opacity = '1';
+                          if (btns) btns.style.setProperty('opacity', '1', 'important');
                         }}
                         onMouseLeave={(e) => {
                           const btns = e.currentTarget.querySelector('.action-btns') as HTMLElement;
-                          if (btns) btns.style.opacity = '0';
+                          if (btns) btns.style.setProperty('opacity', '0', 'important');
                         }}
                       >
-                        <div style={{fontSize: '15px', color: '#f9fafb', fontFamily: 'monospace', lineHeight: '1.6'}}>{correctionData}</div>
+                        <div style={{fontSize: '15px', color: '#f9fafb', fontFamily: 'monospace', lineHeight: '1.6'}}>{correctionData?.[0]}</div>
                         <div className="action-btns" style={{opacity: 0, position: 'absolute', bottom: '12px', right: '12px', display: 'flex', gap: '6px', transition: 'opacity 0.2s'}}>
                           <button 
                             onClick={() => {
-                              commandPanelRef.current?.setPrompt(correctionData);
+                              commandPanelRef.current?.setPrompt(correctionData?.[0] || '');
                               setShowCorrectionResult(false);
                             }}
                             style={{padding: '6px 12px', backgroundColor: '#374151', color: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.2s'}}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#374151'}
                           >Edit</button>
+                        </div>
+                      </div>
+                      <div 
+                        style={{flex: 1, padding: '16px', backgroundColor: '#1f2937', overflowY: 'auto', display: 'flex', alignItems: 'center', position: 'relative'}}
+                        onMouseEnter={(e) => {
+                          const btns = e.currentTarget.querySelector('.action-btns-cn') as HTMLElement;
+                          if (btns) btns.style.setProperty('opacity', '1', 'important');
+                        }}
+                        onMouseLeave={(e) => {
+                          const btns = e.currentTarget.querySelector('.action-btns-cn') as HTMLElement;
+                          if (btns) btns.style.setProperty('opacity', '0', 'important');
+                        }}
+                      >
+                        <div style={{fontSize: '14px', color: '#9ca3af', lineHeight: '1.6'}}>{correctionData?.[1]}</div>
+                        <div className="action-btns-cn" style={{opacity: 0, position: 'absolute', bottom: '12px', right: '12px', display: 'flex', gap: '6px', transition: 'opacity 0.2s'}}>
                           <button 
-                            onClick={async () => {
-                              await fetch(getApiUrl('/api/tmux/send'), {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-                                body: JSON.stringify({win_id: TMUX_TARGET, text: correctionData})
-                              });
-                              
+                            onClick={() => {
+                              commandPanelRef.current?.setPrompt(correctionData?.[1] || '');
                               setShowCorrectionResult(false);
                             }}
-                            style={{padding: '6px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.2s'}}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
-                          >Send</button>
+                            style={{padding: '6px 12px', backgroundColor: '#374151', color: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.2s'}}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+                          >Edit</button>
                         </div>
                       </div>
                     </div>
+                    </div>
                   </div>
                 </div>
-              )}
+              ) : null}
               
               <div 
                 className="absolute top-0 left-0 right-0 h-1 bg-gray-600 hover:bg-blue-500 cursor-row-resize"
@@ -986,6 +1013,9 @@ const App: React.FC = () => {
                     setShowCorrectionResult(true);
                     setShowHistoryOverlay(false);
                   }
+                }}
+                onCorrectionLoading={(loading) => {
+                  setIsCorrectingEnglish(loading);
                 }}
                 agentStatus={agentStatus}
                 contextUsage={contextUsage}
