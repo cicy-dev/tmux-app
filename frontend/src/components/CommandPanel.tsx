@@ -466,6 +466,11 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                   const cmd = promptText.trim();
                   console.log('Triggering correction', {cmd, token, hasCallback: !!onCorrectionLoading});
                   if (cmd && token) {
+                    // Add to history before clearing
+                    const newHistory = [cmd, ...commandHistory.filter(c => c !== cmd)].slice(0, 50);
+                    setCommandHistory(newHistory);
+                    saveCommandHistory(newHistory);
+                    
                     setPromptText('');
                     saveDraft('');
                     console.log('Setting loading true');

@@ -3,13 +3,22 @@ import React, { useEffect } from 'react';
 interface CaptureDialogProps {
   output: string | null;
   onClose: () => void;
-  onRefresh?: () => void;
+  onRefresh?: (paneId: string | undefined, lines: number) => void;
   isRefreshing?: boolean;
   paneId?: string;
 }
 
 export const CaptureDialog: React.FC<CaptureDialogProps> = ({ output, onClose, onRefresh, isRefreshing, paneId }) => {
   const contentRef = React.useRef<HTMLPreElement>(null);
+  const [lines, setLines] = React.useState(100);
+  const cachedPaneIdRef = React.useRef<string | undefined>(paneId);
+  
+  // Update cached pane_id when it changes
+  React.useEffect(() => {
+    if (paneId) {
+      cachedPaneIdRef.current = paneId;
+    }
+  }, [paneId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -32,10 +41,22 @@ export const CaptureDialog: React.FC<CaptureDialogProps> = ({ output, onClose, o
   return (
     <div className="fixed inset-0 flex flex-col bg-black" style={{zIndex: 99999999}}>
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700 bg-gray-900">
-        <span className="text-sm font-semibold text-white">Captured Output</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-white">Captured Output</span>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Lines:</label>
+            <input 
+              type="number" 
+              value={lines} 
+              onChange={(e) => setLines(Math.max(1, parseInt(e.target.value) || 10))}
+              className="w-20 px-2 py-1 text-xs bg-gray-800 text-white border border-gray-600 rounded"
+              min="1"
+            />
+          </div>
+        </div>
         <div className="flex gap-2">
           {onRefresh && (
-            <button onClick={onRefresh} disabled={isRefreshing} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs disabled:opacity-50">
+            <button onClick={() => onRefresh(cachedPaneIdRef.current, lines)} disabled={isRefreshing} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs disabled:opacity-50">
               {isRefreshing ? '...' : 'Refresh'}
             </button>
           )}
