@@ -1,5 +1,5 @@
 import React, { useEffect ,useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Mouse, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Wifi, WifiOff } from 'lucide-react';
+import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Mouse, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Wifi, WifiOff, Mic } from 'lucide-react';
 import { FloatingPanel } from './FloatingPanel';
 import { TerminalControls } from './TerminalControls';
 import { Position, Size } from '../types';
@@ -38,6 +38,8 @@ interface CommandPanelProps {
   boundAgents?: string[];
   onPaneTargetChange?: (target: string) => void;
   disableDrag?: boolean;
+  showVoiceControl?: boolean;
+  onToggleVoiceControl?: () => void;
 }
 
 export interface CommandPanelHandle {
@@ -77,6 +79,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   boundAgents = [],
   onPaneTargetChange,
   disableDrag = false,
+  showVoiceControl = false,
+  onToggleVoiceControl,
 }, ref) => {
   const [selectedPane, setSelectedPane] = useState(paneTarget);
   const [promptText, setPromptText] = useState('');
@@ -265,6 +269,15 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       disableDrag={disableDrag}
       headerActions={
         <>
+          {onToggleVoiceControl && (
+            <button
+              onClick={onToggleVoiceControl}
+              className={`p-1.5 rounded transition-colors ${showVoiceControl ? 'text-red-400 bg-red-500/20' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+              title={showVoiceControl ? "Hide voice mode" : "Show voice mode"}
+            >
+              <Mic size={14} />
+            </button>
+          )}
           <button
             onClick={handleCorrectEnglish}
             disabled={!promptText.trim() || isCorrectingEnglish}

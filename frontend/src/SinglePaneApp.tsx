@@ -158,7 +158,7 @@ const App: React.FC = () => {
           try {
             const parsed = JSON.parse(saved);
             if (!parsed.commandHistory) parsed.commandHistory = [];
-            if (parsed.showVoiceControl) parsed.showPrompt = false;
+            if (parsed.showVoiceControl && MODE !== 'ttyd') parsed.showPrompt = false;
             setSettings({ ...DEFAULT_SETTINGS, ...parsed });
           } catch (e) { console.error('Failed to parse settings', e); }
         } else {
@@ -806,7 +806,7 @@ const App: React.FC = () => {
               onLoad={() => setIsTtydLoading(false)} 
               src={`https://ttyd-proxy.cicy.de5.net/ttyd/${BOT_NAME}/?token=${token}&mode=1`} 
               className="w-full h-full"
-              style={{height: MODE === 'ttyd' && settings.showPrompt && hasPermission('prompt') ? `calc(100% - ${commandPanelHeight}px)` : '100%'}}
+              style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - ${commandPanelHeight}px)` : '100%'}}
             />
             <div 
               className="ttyd-mask absolute inset-0 bg-transparent z-10"
@@ -819,10 +819,11 @@ const App: React.FC = () => {
           </div>
           {isDragging && <div className="absolute inset-0 z-20"></div>}
           {isInteracting && <div className="absolute inset-0 z-20"></div>}
-          {MODE === 'ttyd' && settings.showPrompt && hasPermission('prompt') && (
+          {MODE === 'ttyd' && hasPermission('prompt') && (
             <div className="absolute bottom-0 left-0 right-0" style={{height: `${commandPanelHeight}px`}}>
               <div 
-                className="absolute top-0 left-0 right-0 h-1 bg-gray-600 hover:bg-blue-500 cursor-row-resize z-50"
+                className="absolute top-0 left-0 right-0 h-1 bg-gray-600 hover:bg-blue-500 cursor-row-resize"
+                style={{zIndex: 9999999}}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   setIsDragging(true);
@@ -877,6 +878,10 @@ const App: React.FC = () => {
                 networkLatency={networkLatency}
                 networkStatus={networkStatus}
                 disableDrag={true}
+                showVoiceControl={settings.showVoiceControl}
+                onToggleVoiceControl={() => {
+                  setSettings(prev => ({ ...prev, showVoiceControl: !prev.showVoiceControl}))
+                }}
               />
             </div>
           )}
@@ -886,8 +891,9 @@ const App: React.FC = () => {
       }
       
       {/* Title bar — hidden by default, click menu btn to show */}
-      {!captureOutput && !agentCaptureOpen && !editingPane && (
+      {MODE !== 'ttyd' && !captureOutput && !agentCaptureOpen && !editingPane && (
       <div
+        id="fixTopbar"
         className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 transition-transform duration-200 rounded-lg"
         style={{position:"fixed",zIndex:99999998,top:8,right:8,width:90,height:32}}
       >
@@ -1005,7 +1011,7 @@ const App: React.FC = () => {
 
 
       {/* ReadOnly mask */}
-      {settings.showVoiceControl && (
+      {MODE !== 'ttyd' && settings.showVoiceControl && (
         <div 
           className="fixed"
           style={{inset: '32px 0px 0px', zIndex: 999998, cursor: 'not-allowed'}}
