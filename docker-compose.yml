@@ -17,8 +17,6 @@ services:
       - CHOKIDAR_USEPOLLING=true
     ports:
       - "6902:6902"
-    # depends_on:
-    #   - server
     command: npm run dev
     restart: unless-stopped
     extra_hosts:
