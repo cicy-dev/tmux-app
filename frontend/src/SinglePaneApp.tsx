@@ -617,9 +617,6 @@ const App: React.FC = () => {
       </div>
       )}
 
-
-
-
       {/* Floating command panel */}
       {MODE !== 'ttyd' && settings.showPrompt && hasPermission('prompt') && (
         <CommandPanel
