@@ -9,7 +9,7 @@ interface SettingsViewProps {
   isSaving?: boolean;
 }
 
-const tabs = ['General', 'Agent', 'Config', 'Telegram'] as const;
+const tabs = ['General', 'Config', 'Telegram'] as const;
 type Tab = typeof tabs[number];
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ pane, onChange, onSave, isSaving = false }) => {
@@ -59,9 +59,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ pane, onChange, onSa
               rows={4} placeholder={"pwd\n# sleep:2\n# key:t"} />
             <p className="text-xs text-gray-600 mt-1">sleep:N waits Ns, key:X sends key</p>
           </div>
-        </>)}
-
-        {tab === 'Agent' && (<>
           <div>
             <label className="block text-xs text-gray-400 mb-1">Agent Type</label>
             <select value={pane.agent_type || ''}
@@ -81,13 +78,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ pane, onChange, onSa
               onChange={e => onChange({ ...pane, agent_duty: e.target.value })}
               className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 resize-none"
               rows={6} placeholder="Describe agent's role and responsibilities..." />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">TTYD Preview</label>
-            <input type="text" value={pane.ttyd_preview || ''}
-              onChange={e => onChange({ ...pane, ttyd_preview: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-600 text-white text-sm font-mono rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500"
-              placeholder="w-12345" />
           </div>
         </>)}
 
