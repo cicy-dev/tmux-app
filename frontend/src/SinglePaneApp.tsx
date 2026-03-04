@@ -1,18 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Terminal,Mouse, Loader2, Clipboard, X, Keyboard, Mic, RotateCcw, Power, Pencil, Settings } from 'lucide-react';
-import { TtydFrame, TtydFrameHandle } from './components/TtydFrame';
+import { Loader2, Keyboard, Mic } from 'lucide-react';
+import { TtydFrameHandle } from './components/TtydFrame';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
-import { IframeTopbar } from './components/IframeTopbar';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
-import { MultiTerminalView } from './components/MultiTerminalView';
 import { EditPaneDialog, EditPaneData } from './components/EditPaneDialog';
-import { SettingsView } from './components/SettingsView';
-import { AgentsView } from './components/AgentsView';
-import { AgentsListView } from './components/AgentsListView';
 import { CaptureDialog } from './components/CaptureDialog';
-import { sendShortcut } from './services/mockApi';
 import { getApiUrl,TTYD_BASE,API_BASE } from './services/apiUrl';
 import { AppSettings, Position, Size } from './types';
 

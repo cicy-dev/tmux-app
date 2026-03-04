@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { getApiUrl } from '../services/apiUrl';
 
 interface LoginFormProps {

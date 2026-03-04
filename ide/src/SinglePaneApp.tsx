@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Terminal,Mouse, Loader2, Clipboard, X, Keyboard, Mic, RotateCcw, Power, Pencil, Settings } from 'lucide-react';
-import { TtydFrame, TtydFrameHandle } from './components/TtydFrame';
-import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
+import { Loader2, Keyboard, Mic, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power } from 'lucide-react';
 import { IframeTopbar } from './components/IframeTopbar';
+import { TtydFrameHandle } from './components/TtydFrame';
+import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
-import { MultiTerminalView } from './components/MultiTerminalView';
 import { EditPaneDialog, EditPaneData } from './components/EditPaneDialog';
 import { SettingsView } from './components/SettingsView';
-import { AgentsView } from './components/AgentsView';
 import { AgentsListView } from './components/AgentsListView';
 import { CaptureDialog } from './components/CaptureDialog';
 import { getApiUrl,TTYD_BASE,API_BASE } from './services/apiUrl';
@@ -811,13 +809,49 @@ const App: React.FC = () => {
           }}
         >
           {isTtydLoading && <div className="absolute inset-0 flex items-center justify-center bg-gray-900"><Loader2 className="animate-spin" /></div>}
-          <div className="relative w-full h-full">
-            <iframe 
-              ref={mainIframeRef} 
-              loading="lazy" 
-              sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts" 
-              onLoad={() => setIsTtydLoading(false)} 
-              src={`https://ttyd-proxy.cicy.de5.net/ttyd/${BOT_NAME}/?token=${token}&mode=1`} 
+          <IframeTopbar
+            title={paneTitle || BOT_NAME}
+            workspace={paneWorkspace}
+            networkLatency={networkLatency}
+            networkStatus={networkStatus}
+            rightActions={
+              <>
+                <button type="button" onClick={async () => {
+                  const paneId = BOT_NAME.replace(':main.0', '');
+                  await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/choose-session`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                }} className="px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors" title="会话选择">^bs</button>
+                <button type="button" onClick={async () => {
+                  const paneId = BOT_NAME.replace(':main.0', '');
+                  await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=v`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                }} className="p-1 bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors" title="水平分屏(上下)"><SplitSquareVertical size={12} /></button>
+                <button type="button" onClick={async () => {
+                  const paneId = BOT_NAME.replace(':main.0', '');
+                  await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=h`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                }} className="p-1 bg-blue-700 hover:bg-blue-600 text-white rounded transition-colors" title="垂直分屏(左右)"><SplitSquareHorizontal size={12} /></button>
+                <button type="button" onClick={async () => {
+                  const paneId = BOT_NAME.replace(':main.0', '');
+                  await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/unsplit`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                }} className="p-1 bg-red-700 hover:bg-red-600 text-white rounded transition-colors" title="关闭分屏"><XSquare size={12} /></button>
+                <button type="button" onClick={() => {
+                  if (mainIframeRef.current) {
+                    mainIframeRef.current.src = mainIframeRef.current.src;
+                  }
+                }} className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Reload page"><RotateCcw size={12} /></button>
+                {hasPermission('prompt') && (
+                  <button type="button" onClick={() => handleRestart()} className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors" title="Restart tmux and ttyd">
+                    <Power size={12} className={isRestarting ? 'animate-pulse' : ''} />
+                  </button>
+                )}
+              </>
+            }
+          />
+          <div className="relative w-full" style={{height: 'calc(100% - 40px)', marginTop: '40px'}}>
+            <iframe
+              ref={mainIframeRef}
+              loading="lazy"
+              sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+              onLoad={() => setIsTtydLoading(false)}
+              src={`https://ttyd-proxy.cicy.de5.net/ttyd/${BOT_NAME}/?token=${token}&mode=1`}
               className="w-full h-full"
               style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - ${commandPanelHeight}px)` : '100%'}}
             />

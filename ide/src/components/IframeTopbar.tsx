@@ -19,7 +19,7 @@ export const IframeTopbar: React.FC<IframeTopbarProps> = ({
   rightActions,
 }) => {
   return (
-    <div className="absolute top-0 left-0 right-0 h-8 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center justify-between px-3 z-30">
+    <div className="absolute top-0 left-0 right-0 h-10 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 flex items-center justify-between px-3 z-30">
       <div className="flex items-center gap-2 min-w-0 mr-2">
         <span className="text-xs text-white font-medium truncate">{title}</span>
         {workspace && (

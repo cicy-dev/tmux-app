@@ -1,5 +1,5 @@
 import React, { useEffect ,useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Mouse, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Wifi, WifiOff, Mic } from 'lucide-react';
+import { Loader2, CheckCircle, History, Mic } from 'lucide-react';
 import { FloatingPanel } from './FloatingPanel';
 import { TerminalControls } from './TerminalControls';
 import { Position, Size } from '../types';
@@ -364,6 +364,19 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               <Mic size={14} />
             </button>
           )}
+          <TerminalControls
+            mouseMode={paneModes[selectedPane] || mouseMode}
+            onToggleMouse={() => {
+              const newMode = (paneModes[selectedPane] || mouseMode) === 'on' ? 'off' : 'on';
+              const updated = { ...paneModes, [selectedPane]: newMode };
+              setPaneModes(updated);
+              localStorage.setItem('pane_mouse_modes', JSON.stringify(updated));
+              onToggleMouse?.();
+            }}
+            isTogglingMouse={isTogglingMouse}
+            onCapture={hasCapturePermission ? () => onCapturePane?.(selectedPane) : undefined}
+            isCapturing={isCapturing}
+          />
           {mode === 'ttyd' && (
             <>
               <button
@@ -388,18 +401,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               <span>Correcting...</span>
             </div>
           )}
-          <div
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded"
-            title={networkLatency !== null ? `Latency: ${networkLatency}ms` : 'Offline'}
-          >
-            {networkStatus === 'excellent' && <Wifi size={12} className="text-green-400" />}
-            {networkStatus === 'good' && <Wifi size={12} className="text-yellow-400" />}
-            {networkStatus === 'poor' && <Wifi size={12} className="text-orange-400" />}
-            {networkStatus === 'offline' && <WifiOff size={12} className="text-red-400" />}
-            <span className="text-xs text-gray-500 font-mono">
-              {networkLatency !== null ? `${networkLatency}ms` : 'offline'}
-            </span>
-          </div>
         </>
       }
     >
@@ -630,57 +631,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                 )}
               </button>
             </div>
-          </div>
-
-          {/* Bottom action buttons */}
-          <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-gray-700/50">
-            <TerminalControls
-              mouseMode={paneModes[selectedPane] || mouseMode}
-              onToggleMouse={() => {
-                const newMode = (paneModes[selectedPane] || mouseMode) === 'on' ? 'off' : 'on';
-                const updated = { ...paneModes, [selectedPane]: newMode };
-                setPaneModes(updated);
-                localStorage.setItem('pane_mouse_modes', JSON.stringify(updated));
-                onToggleMouse?.();
-              }}
-              isTogglingMouse={isTogglingMouse}
-              onCapture={hasCapturePermission ? () => onCapturePane?.(selectedPane) : undefined}
-              isCapturing={isCapturing}
-            />
-            <button type="button" onClick={async () => {
-              const paneId = selectedPane.replace(':main.0', '');
-              await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/choose-session`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
-            }} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors shadow" title="会话选择">^bs</button>
-            <button type="button" onClick={async () => {
-              const paneId = selectedPane.replace(':main.0', '');
-              await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=v`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
-            }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="水平分屏(上下)"><SplitSquareVertical size={14} /></button>
-            <button type="button" onClick={async () => {
-              const paneId = selectedPane.replace(':main.0', '');
-              await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=h`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
-            }} className="p-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors shadow" title="垂直分屏(左右)"><SplitSquareHorizontal size={14} /></button>
-            <button type="button" onClick={async () => {
-              const paneId = selectedPane.replace(':main.0', '');
-              await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/unsplit`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
-            }} className="p-1.5 bg-red-700 hover:bg-red-600 text-white rounded-md transition-colors shadow" title="关闭分屏"><XSquare size={14} /></button>
-            {onReload && (
-              <button
-                onClick={onReload}
-                className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                title="Reload page"
-              >
-                <RotateCcw size={14} />
-              </button>
-            )}
-            {hasRestartPermission && onRestart && (
-              <button
-                onClick={() => onRestart(selectedPane)}
-                className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors"
-                title="Restart tmux and ttyd"
-              >
-                <Power size={14} className={isRestarting ? 'animate-pulse' : ''} />
-              </button>
-            )}
           </div>
 
         </div>

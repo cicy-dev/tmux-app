@@ -1,5 +1,5 @@
 import React, { useEffect ,useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Loader2, CheckCircle, Sparkles, History, X, Check, Clipboard, Mouse, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Wifi, WifiOff, Mic } from 'lucide-react';
+import { Loader2, CheckCircle, History, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Wifi, WifiOff, Mic } from 'lucide-react';
 import { FloatingPanel } from './FloatingPanel';
 import { TerminalControls } from './TerminalControls';
 import { Position, Size } from '../types';

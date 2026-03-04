@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Plus, Trash2, RotateCw, ExternalLink } from 'lucide-react';
-import { API_BASE, getApiUrl } from '../services/apiUrl';
+import { getApiUrl } from '../services/apiUrl';
 
 interface Agent {
   id: number;
