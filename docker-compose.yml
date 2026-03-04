@@ -1,16 +1,16 @@
 services:
   app:
     build:
-      context: ./app
+      context: ./ide
       dockerfile: Dockerfile
     volumes:
-      - .//ap/src:/app/src:ro
-      - .//ap/index.html:/app/index.html:ro
-      - .//ap/public/inject.js:/app/public/inject.js:ro
-      - .//ap/vite.config.ts:/app/vite.config.ts:ro
-      - .//ap/tailwind.config.js:/app/tailwind.config.js:ro
-      - .//ap/postcss.config.js:/app/postcss.config.js:ro
-      - .//ap/.env:/app/.env:ro
+      - ./ide/src:/app/src:ro
+      - ./ide/index.html:/app/index.html:ro
+      - ./ide/public/inject.js:/app/public/inject.js:ro
+      - ./ide/vite.config.ts:/app/vite.config.ts:ro
+      - ./ide/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./ide/postcss.config.js:/app/postcss.config.js:ro
+      - ./ide/.env:/app/.env:ro
       - /app/node_modules
     environment:
       - NODE_ENV=development
