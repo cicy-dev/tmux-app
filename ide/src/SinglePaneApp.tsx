@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Loader2, Keyboard, Mic, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Home, RefreshCw, MoreVertical, History, GripHorizontal, Plus, Folder, ChevronDown, ChevronUp } from 'lucide-react';
-import { TtydFrameHandle } from './components/TtydFrame';
+import { Loader2, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Home, RefreshCw, MoreVertical, History, GripHorizontal, Plus, Folder, ChevronDown, ChevronUp } from 'lucide-react';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
 import { EditPaneDialog, EditPaneData } from './components/EditPaneDialog';
 import { SettingsView } from './components/SettingsView';
-import { AgentControls } from './components/AgentControls';
 import { AgentsListView } from './components/AgentsListView';
 import { AgentsRightView } from './components/AgentsRightView';
 import { CaptureDialog } from './components/CaptureDialog';
-import { getApiUrl,TTYD_BASE,API_BASE } from './services/apiUrl';
+import { getApiUrl,API_BASE } from './services/apiUrl';
 import { AppSettings, Position, Size } from './types';
 import { WebFrame } from './components/WebFrame';
 
@@ -87,6 +85,7 @@ const App: React.FC = () => {
     const saved = localStorage.getItem(`${CurrentPaneId}_activeTab`);
     return (saved as any) || 'Code';
   });
+  const [agentsSubTab, setAgentsSubTab] = useState<'All' | 'Binded'>('All');
   const [previewTab, setPreviewTab] = useState<number>(() => {
     const saved = localStorage.getItem(`${CurrentPaneId}_previewTab`);
     return saved ? parseInt(saved) : 0;
@@ -677,11 +676,11 @@ const App: React.FC = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden font-sans" >
       {
-        MODE === "ttyd" && <div id="mainIfame" className="fixed inset-0"> 
+        MODE === "ttyd" && <div id="main" className="fixed inset-0"> 
 
-        <div id="mainCodeServer" className="absolute inset-0 bg-vsc-bg" style={{width: `calc(100vw - ${ttydWidth}px - 4px)`}}>
-          <div className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
-            {([ 'Code', 'Preview', 'Settings'] as const).map(tab => (
+        <div id="main-left" className="absolute inset-0 bg-vsc-bg" style={{width: `calc(100vw - ${ttydWidth}px - 4px)`}}>
+          <div id="main-left-top" className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
+            {([ 'Code', 'Agents', 'Preview', 'Settings'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => {
@@ -696,11 +695,11 @@ const App: React.FC = () => {
           </div>
           {isInteracting && <div className="absolute inset-0 z-20"></div>}
             {paneWorkspace && (
-              <div className="absolute inset-0 flex flex-col" style={{marginTop: '40px', display: activeTab === 'Code' ? 'flex' : 'none'}}>
+              <div id="main-left-inner" className="absolute inset-0 flex flex-col" style={{marginTop: '40px', display: activeTab === 'Code' ? 'flex' : 'none'}}>
                 {/* 区域 A: Code Server - 蓝色背景 */}
-                <div className="w-full flex-1 overflow-hidden flex flex-col" style={{display: isAgentsMaximized ? 'none' : 'flex', backgroundColor: 'rgba(0, 100, 255, 0.1)'}}>
+                <div  id="main-left-code-server"  className="w-full flex-1 overflow-hidden flex flex-col" style={{display: isAgentsMaximized ? 'none' : 'flex'}}>
                   {/* Home + Path Input */}
-                  <div className="h-8 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center px-2 gap-2 flex-shrink-0">
+                  <div className=".bg-vsc-bg h-8 border-b border-vsc-border flex items-center px-2 gap-2 flex-shrink-0">
                     <button 
                       onClick={() => navigateToPath(paneWorkspace, true)}
                       className="p-1 text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover rounded"
@@ -756,119 +755,10 @@ const App: React.FC = () => {
                 {showTtydInCode && (
                   <>
                     <div 
-                      className="w-full h-1 bg-vsc-border hover:bg-vsc-accent cursor-row-resize flex-shrink-0"
-                      style={{display: (isAgentsMinimized || isAgentsMaximized) ? 'none' : 'block'}}
-                      onMouseDown={(e) => {
-                        if (isAgentsMinimized || isAgentsMaximized) return;
-                        e.preventDefault();
-                        setIsDragging(true);
-                        const startY = e.clientY;
-                        const startHeight = ttydPreviewHeight;
-                        const onMouseMove = (e: MouseEvent) => {
-                          const newHeight = Math.max(100, Math.min(window.innerHeight - 200, startHeight + (startY - e.clientY)));
-                          setTtydPreviewHeight(newHeight);
-                        };
-                        const onMouseUp = () => {
-                          setIsDragging(false);
-                          localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, ttydPreviewHeight.toString());
-                          document.removeEventListener('mousemove', onMouseMove);
-                          document.removeEventListener('mouseup', onMouseUp);
-                        };
-                        document.addEventListener('mousemove', onMouseMove);
-                        document.addEventListener('mouseup', onMouseUp);
-                      }}
+                      className="w-full h-1 bg-vsc-border flex-shrink-0"
+                      style={{display: 'none'}}
                     ></div>
                     {isDragging && <div className="absolute inset-0 z-20"></div>}
-                    {/* 区域 B: Agents - 红色背景 */}
-                    <div className="agents-container w-full flex-shrink-0 flex flex-col" style={{height: `${ttydPreviewHeight}px`, backgroundColor: 'rgba(255, 0, 0, 0.1)'}}>
-                      <div className="h-8 bg-vsc-bg-secondary border-t border-vsc-border flex items-center justify-between px-3 flex-shrink-0">
-                        <span className="text-xs text-vsc-text-secondary">Agents</span>
-                        <div className="flex gap-4 items-center">
-                          {!isAgentsMinimized && (
-                            <AgentControls 
-                              paneId={CurrentPaneId} 
-                              token={token} 
-                              boundAgents={boundAgents}
-                              onAgentAdded={() => {
-                                console.log('Current boundAgents:', boundAgents);
-                              }} 
-                            />
-                          )}
-                          <button
-                            onClick={() => {
-                              const container = document.querySelector('.agents-container') as HTMLElement;
-                              const agentsList = container?.querySelector('.flex-1') as HTMLElement;
-                              if (agentsList) {
-                                agentsList.style.display = 'none';
-                              }
-                              setTtydPreviewHeight(32);
-                              setIsAgentsMinimized(true);
-                              setIsAgentsMaximized(false);
-                              localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, '32');
-                            }}
-                            className="text-vsc-text-secondary hover:text-vsc-text text-xs"
-                            title="Minimize"
-                          >
-                            _
-                          </button>
-                          <button
-                            onClick={() => {
-                              const container = document.querySelector('.agents-container') as HTMLElement;
-                              const agentsList = container?.querySelector('.flex-1') as HTMLElement;
-                              if (agentsList) {
-                                agentsList.style.display = 'block';
-                              }
-                              setTtydPreviewHeight(300);
-                              setIsAgentsMinimized(false);
-                              setIsAgentsMaximized(false);
-                              localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, '300');
-                            }}
-                            className="text-vsc-text-secondary hover:text-vsc-text text-xs"
-                            title="Medium"
-                          >
-                            □
-                          </button>
-                          <button
-                            onClick={() => {
-                              const container = document.querySelector('.agents-container') as HTMLElement;
-                              const agentsList = container?.querySelector('.flex-1') as HTMLElement;
-                              if (agentsList) {
-                                agentsList.style.display = 'block';
-                              }
-                              setTtydPreviewHeight(window.innerHeight - 72);
-                              setIsAgentsMinimized(false);
-                              setIsAgentsMaximized(true);
-                              localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, (window.innerHeight - 72).toString());
-                            }}
-                            className="text-vsc-text-secondary hover:text-vsc-text text-xs"
-                            title="Maximize"
-                          >
-                            ▢
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <AgentsListView 
-                          paneId={CurrentPaneId} 
-                          token={token} 
-                          isDragging={isDragging} 
-                          onAgentsChange={(agents) => setBoundAgents(agents)} 
-                          onCaptureOpen={setAgentCaptureOpen}
-                          onRestart={handleRestart}
-                          onCapture={handleCapturePane}
-                          onToggleMouse={async (paneId) => {
-                            try {
-                              await fetch(getApiUrl(`/api/tmux/mouse/toggle?pane_id=${encodeURIComponent(paneId)}`), {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                              });
-                            } catch (err) {
-                              console.error('Failed to toggle mouse:', err);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
                   </>
                 )}
                 {isDragging && <div className="absolute inset-0 z-20"></div>}
@@ -920,6 +810,78 @@ const App: React.FC = () => {
                 </>
               )}
             </>
+          )}
+          {activeTab === 'Agents' && (
+            <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column'}}>
+              <div className="flex items-center gap-2 px-4 py-2 border-b border-vsc-border">
+                {(['All', 'Binded'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setAgentsSubTab(tab)}
+                    className={`px-3 py-1 rounded text-sm ${agentsSubTab === tab ? 'bg-vsc-button text-vsc-button-text' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover'}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1 overflow-auto">
+                {agentsSubTab === 'All' && (
+                  <AgentsRightView 
+                    token={token} 
+                    existingTabs={[]} 
+                    onAddAgent={(paneId, url) => {
+                      console.log('Bind agent:', paneId, url);
+                    }}
+                    onNewAgent={async () => {
+                      if (!confirm('Create a new agent?')) return;
+                      try {
+                        const res = await fetch(getApiUrl('/api/tmux/create'), {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            win_name: `Agent-${Date.now()}`,
+                            workspace: '',
+                            init_script: 'pwd'
+                          })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.pane_id) {
+                          alert(`Created: ${data.pane_id}`);
+                        } else {
+                          alert(`Failed: ${data.detail || 'Unknown error'}`);
+                        }
+                      } catch (err) {
+                        alert(`Error: ${err}`);
+                      }
+                    }}
+                  />
+                )}
+                {agentsSubTab === 'Binded' && (
+                  <AgentsListView 
+                    paneId={CurrentPaneId} 
+                    token={token} 
+                    isDragging={isDragging} 
+                    onAgentsChange={(agents) => setBoundAgents(agents)} 
+                    onCaptureOpen={setAgentCaptureOpen}
+                    onRestart={handleRestart}
+                    onCapture={handleCapturePane}
+                    onToggleMouse={async (paneId) => {
+                      try {
+                        await fetch(getApiUrl(`/api/tmux/mouse/toggle?pane_id=${encodeURIComponent(paneId)}`), {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                      } catch (err) {
+                        console.error('Failed to toggle mouse:', err);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            </div>
           )}
           {activeTab === 'Settings' && (
             <div style={{marginTop: '40px', height: 'calc(100% - 40px)'}}>
@@ -994,7 +956,7 @@ const App: React.FC = () => {
           }}
         ></div>
         <div 
-          id="maicnTtyd" 
+          id="main-right" 
           className="absolute inset-0" 
           style={{width: `${ttydWidth}px`, left: `calc(100vw - ${ttydWidth}px)`}}
           onMouseLeave={(e) => {
@@ -1004,43 +966,13 @@ const App: React.FC = () => {
         >
           <div className="h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2">
             <div id="main-right-topbar" className="flex items-center gap-2 flex-1 min-w-0">
-              {agentTabs.map((tab, idx) => (
-                <div key={tab.paneId} className="relative group flex items-center gap-1">
-                  <button
-                    onClick={() => {
-                      console.log('Switching to tab:', tab.paneId);
-                      setActiveAgentTab(tab.paneId);
-                    }}
-                    className={`px-3 py-1 rounded text-sm ${activeAgentTab === tab.paneId ? 'bg-vsc-button text-vsc-button-text' : 'bg-vsc-bg text-vsc-text hover:bg-vsc-bg-hover'}`}
-                  >
-                    {tab.paneId === CurrentPaneId ? paneTitle : (tab.title || tab.paneId)}
-                  </button>
-                  {tab.closable && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Close ${tab.paneId}?`)) {
-                          setAgentTabs(agentTabs.filter(t => t.paneId !== tab.paneId));
-                          if (activeAgentTab === tab.paneId) {
-                            setActiveAgentTab(CurrentPaneId);
-                          }
-                        }
-                      }}
-                      className="absolute -top-2 -right-2 z-[1] w-5 h-5 flex items-center justify-center text-vsc-text-secondary hover:text-red-400 hover:bg-vsc-bg-hover rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Close"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                onClick={() => setShowAddPanel(!showAddPanel)}
-                className="w-6 h-6 flex items-center justify-center rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover"
-                title="Add"
-              >
-                {showAddPanel ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
+              <div className="relative group flex items-center gap-1">
+                <button
+                  className="px-3 py-1 rounded text-sm bg-vsc-button text-vsc-button-text"
+                >
+                  {paneTitle || CurrentPaneId}
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-xs text-vsc-text-secondary">
@@ -1333,26 +1265,8 @@ const App: React.FC = () => {
               ) : null}
               
               <div 
-                className="absolute top-0 left-0 right-0 h-1 bg-vsc-border hover:bg-vsc-accent cursor-row-resize"
+                className="absolute top-0 left-0 right-0 h-1 bg-vsc-border"
                 style={{zIndex: 9999999}}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                  const startY = e.clientY;
-                  const startHeight = commandPanelHeight;
-                  const onMouseMove = (e: MouseEvent) => {
-                    const newHeight = Math.max(150, Math.min(window.innerHeight - 100, startHeight - (e.clientY - startY)));
-                    setCommandPanelHeight(newHeight);
-                  };
-                  const onMouseUp = () => {
-                    setIsDragging(false);
-                    localStorage.setItem(`${CurrentPaneId}_commandPanelHeight`, commandPanelHeight.toString());
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                  };
-                  document.addEventListener('mousemove', onMouseMove);
-                  document.addEventListener('mouseup', onMouseUp);
-                }}
               ></div>
               <CommandPanel
                 ref={commandPanelRef}
@@ -1420,49 +1334,6 @@ const App: React.FC = () => {
       </div>
       }
       
-      {/* Title bar — hidden by default, click menu btn to show */}
-      {MODE !== 'ttyd' && !captureOutput && !agentCaptureOpen && !editingPane && (
-      <div
-        id="fixTopbar"
-        className="bg-vsc-bg/80 backdrop-blur-sm border border-vsc-border-subtle transition-transform duration-200 rounded-lg"
-        style={{position:"fixed",zIndex:99999998,top:8,right:8,width:90,height:32}}
-      >
-        <div className="h-full flex items-center justify-center px-3 gap-1">
-          {hasPermission('prompt') && (
-            <button
-              onClick={() => {
-                  if(settings.showVoiceControl){
-                    setSettings(prev => ({ ...prev,showVoiceControl:false, showPrompt: !prev.showPrompt }))
-                  }else{
-                    setSettings(prev => ({ ...prev, showPrompt: !prev.showPrompt }))
-                  }
-              }}
-              className={`p-1.5 rounded transition-colors ${settings.showPrompt ? 'text-vsc-link bg-blue-500/20' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active'}`}
-              title={settings.showPrompt ? "Hide command panel" : "Show command panel"}
-            >
-              <Keyboard size={14} />
-            </button>
-            )}
-            {hasPermission('prompt') && (
-            <button
-              onClick={() => {
-                if(settings.showPrompt){
-                  setSettings(prev => ({ ...prev, showPrompt:false,showVoiceControl: !prev.showVoiceControl}))
-                }else{
-                  setSettings(prev => ({ ...prev, showVoiceControl: !prev.showVoiceControl}))
-                }
-                
-              }}
-              className={`p-1.5 rounded transition-colors ${settings.showVoiceControl ? 'text-red-400 bg-red-500/20' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active'}`}
-              title={settings.showVoiceControl ? "Hide voice mode" : "Show voice mode"}
-            >
-              <Mic size={14} />
-            </button>
-            )}
-        </div>
-      </div>
-      )}
-
 
 
 

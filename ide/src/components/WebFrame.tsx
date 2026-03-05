@@ -75,7 +75,8 @@ export const WebFrame = forwardRef<HTMLIFrameElement, WebFrameProps>(
           loading={loading}
           allowFullScreen={allowFullScreen}
           title={title}
-          sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+          sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads"
+          allow="clipboard-read; clipboard-write"
         />
       </>
     );

@@ -5,6 +5,7 @@ interface AgentsRightViewProps {
   token: string;
   onAddAgent: (paneId: string, title:string,url: string) => void;
   existingTabs: string[];
+  onNewAgent?: () => void;
 }
 
 interface Agent {
@@ -14,7 +15,7 @@ interface Agent {
   [key: string]: any;
 }
 
-export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAgent, existingTabs }) => {
+export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAgent, existingTabs, onNewAgent }) => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -63,7 +64,7 @@ export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAg
   };
 
   return (
-    <div className="absolute inset-0 bg-vsc-bg/95 backdrop-blur-sm z-50 overflow-auto">
+    <div className="h-full bg-vsc-bg overflow-auto flex flex-col">
       {loading && agents.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <div className="text-vsc-text-secondary">Loading agents...</div>
@@ -77,24 +78,71 @@ export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAg
         </div>
       ) : (
         <div className="flex flex-col h-full">
-          <div className="flex-shrink-0 p-4 border-b border-vsc-border">
+          <div className="flex-shrink-0 p-4 border-b border-vsc-border flex items-center gap-2">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search agents..."
-              className="w-full px-3 py-2 bg-vsc-bg-secondary border border-vsc-border rounded text-sm text-vsc-text placeholder-vsc-text-muted focus:outline-none focus:border-vsc-button"
+              className="flex-1 px-3 py-2 bg-vsc-bg-secondary border border-vsc-border rounded text-sm text-vsc-text placeholder-vsc-text-muted focus:outline-none focus:border-vsc-button"
               autoFocus
             />
+            {onNewAgent && (
+              <button
+                onClick={onNewAgent}
+                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-1 whitespace-nowrap"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                New Agent
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-auto p-4">
-            <div className="max-w-4xl mx-auto space-y-2">
+            <div className="grid grid-cols-[repeat(auto-fill,300px)] gap-2 justify-start">
               {filteredAgents.map((agent, idx) => (
                 <div 
                   key={agent.pane_id || idx}
-                  onClick={() => handleAgentClick(agent)}
-                  className="group flex items-center gap-3 bg-vsc-bg-secondary border border-vsc-border rounded-lg p-3 cursor-pointer hover:border-vsc-button hover:bg-vsc-bg-hover transition-all"
+                  onClick={() => {
+                    const url = `https://ide.cicy.de5.net/ttyd/${agent.pane_id}/?token=${token}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="group relative flex items-center gap-3 bg-vsc-bg-secondary border border-vsc-border rounded-lg p-3 cursor-pointer hover:border-vsc-button hover:bg-vsc-bg-hover transition-all h-[80px]"
                 >
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (confirm(`Remove ${agent.pane_id}?`)) {
+                        try {
+                          // First unbind if agent has an ID
+                          if (agent.id) {
+                            await fetch(getApiUrl(`/api/agents/unbind/${agent.id}`), {
+                              method: 'DELETE',
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                          }
+                          // Then delete the pane
+                          const res = await fetch(getApiUrl(`/api/tmux/panes/${agent.pane_id}`), {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          });
+                          if (res.ok) {
+                            setAgents(agents.filter(a => a.pane_id !== agent.pane_id));
+                          } else {
+                            alert('Failed to remove agent');
+                          }
+                        } catch (err) {
+                          console.error('Failed to remove:', err);
+                          alert('Error removing agent');
+                        }
+                      }
+                    }}
+                    className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    ×
+                  </button>
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${agent.status === 'idle' ? 'bg-green-500' : agent.status === 'thinking' ? 'bg-yellow-500' : 'bg-gray-500'}`}></div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-vsc-text truncate">
