@@ -1,0 +1,150 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import ApiClient from '../services/api';
+import { TokenManager } from '../services/tokenManager';
+import { PaneManager } from '../services/paneManager';
+
+interface Agent {
+  pane_id: string;
+  status?: string;
+  title?: string;
+  id?: number;
+  [key: string]: any;
+}
+
+interface AppContextType {
+  // Auth
+  token: string | null;
+  isAuthenticated: boolean;
+  login: (token: string) => void;
+  logout: () => void;
+
+  // Pane Selection
+  currentPaneId: string | null;
+  selectPane: (paneId: string) => void;
+  clearPane: () => void;
+
+  // API Client
+  api: ApiClient | null;
+
+  // Agents
+  agents: Agent[];
+  loadAgents: () => Promise<void>;
+  removeAgent: (paneId: string, agentId?: number) => Promise<void>;
+  
+  // UI State
+  loading: boolean;
+  error: string | null;
+  setError: (error: string | null) => void;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [token, setToken] = useState<string | null>(null);
+  const [currentPaneId, setCurrentPaneId] = useState<string | null>(null);
+  const [api, setApi] = useState<ApiClient | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize token, pane, and API client
+  useEffect(() => {
+    const cachedToken = TokenManager.init();
+    const cachedPane = PaneManager.getCurrentPane();
+    
+    if (cachedToken) {
+      setToken(cachedToken);
+      setApi(new ApiClient(cachedToken));
+    }
+    
+    if (cachedPane) {
+      setCurrentPaneId(cachedPane);
+    }
+    
+    setLoading(false);
+  }, []);
+
+  const login = (newToken: string) => {
+    TokenManager.saveToken(newToken);
+    setToken(newToken);
+    setApi(new ApiClient(newToken));
+  };
+
+  const logout = () => {
+    TokenManager.clearToken();
+    PaneManager.clearCurrentPane();
+    setToken(null);
+    setCurrentPaneId(null);
+    setApi(null);
+    setAgents([]);
+  };
+
+  const selectPane = (paneId: string) => {
+    PaneManager.setCurrentPane(paneId);
+    setCurrentPaneId(paneId);
+  };
+
+  const clearPane = () => {
+    PaneManager.clearCurrentPane();
+    setCurrentPaneId(null);
+  };
+
+  const loadAgents = async () => {
+    if (!api) return;
+    try {
+      setLoading(true);
+      const data = await api.getAgents();
+      setAgents(Object.values(data));
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeAgent = async (paneId: string, agentId?: number) => {
+    if (!api) return;
+    try {
+      // Unbind if has agent ID
+      if (agentId) {
+        await api.unbindAgent(agentId);
+      }
+      // Delete pane
+      await api.deleteAgent(paneId);
+      // Update local state
+      setAgents(agents.filter(a => a.pane_id !== paneId));
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const value: AppContextType = {
+    token,
+    isAuthenticated: !!token,
+    login,
+    logout,
+    currentPaneId,
+    selectPane,
+    clearPane,
+    api,
+    agents,
+    loadAgents,
+    removeAgent,
+    loading,
+    error,
+    setError,
+  };
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within AppProvider');
+  }
+  return context;
+};
