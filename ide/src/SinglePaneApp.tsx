@@ -43,6 +43,7 @@ declare global {
 }
 
 const App: React.FC = () => {
+  const { currentPaneId, allPanes } = useApp();
   const MODE = "ttyd";
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -124,6 +125,11 @@ const App: React.FC = () => {
   const mainIframeRef = useRef<HTMLIFrameElement>(null);
 
   const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
+
+  // Compute display values after all state is defined
+  const currentPane = allPanes.find((p: any) => p.pane_id === currentPaneId);
+  const displayPaneId = currentPaneId || CurrentPaneId || '';
+  const displayPaneTitle = currentPane?.title || paneTitle || displayPaneId || 'No pane selected';
 
   const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
 
@@ -328,14 +334,15 @@ const App: React.FC = () => {
 
   // Initialize main agent tab when token is ready
   useEffect(() => {
-    if (token && agentTabs.length === 0) {
+    if (token && agentTabs.length === 0 && displayPaneId) {
       setAgentTabs([{
-        paneId: CurrentPaneId,
-        url: `https://ttyd-proxy.cicy.de5.net/ttyd/${CurrentPaneId}/?token=${token}&mode=1`,
+        paneId: displayPaneId,
+        title: displayPaneTitle,
+        url: `https://ttyd-proxy.cicy.de5.net/ttyd/${displayPaneId}/?token=${token}&mode=1`,
         closable: false
       }]);
     }
-  }, [token]);
+  }, [token, displayPaneId]);
 
   // Verify token and get permissions
   useEffect(() => {
@@ -970,22 +977,23 @@ const App: React.FC = () => {
         >
           <MiddlePanel />
         </div>
+        {/* Column 2: Middle - Terminal */}
         <div 
-          id="main-right" 
+          id="main-middle" 
           className="absolute inset-0" 
-          style={{width: `${ttydWidth}px`, left: `calc(100vw - ${ttydWidth}px)`}}
+          style={{width: `${ttydWidth}px`, left: '256px'}}
           onMouseLeave={(e) => {
             const target = e.currentTarget.querySelector('.ttyd-mask') as HTMLElement;
             if (target) target.style.display = 'block';
           }}
         >
           <div className="h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2">
-            <div id="main-right-topbar" className="flex items-center gap-2 flex-1 min-w-0">
+            <div id="main-middle-topbar" className="flex items-center gap-2 flex-1 min-w-0">
               <div className="relative group flex items-center gap-1">
                 <button
                   className="px-3 py-1 rounded text-sm bg-vsc-button text-vsc-button-text"
                 >
-                  {paneTitle || CurrentPaneId}
+                  {displayPaneTitle}
                 </button>
               </div>
             </div>
@@ -1084,7 +1092,7 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-          <div id="main-right-top" className="relative w-full" style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - 40px - ${commandPanelHeight}px)` : 'calc(100% - 40px)'}}>
+          <div id="main-middle-content" className="relative w-full" style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - 40px - ${commandPanelHeight}px)` : 'calc(100% - 40px)'}}>
            {showAddPanel && <AgentsRightView token={token} existingTabs={agentTabs.map(t => t.paneId)} onAddAgent={(paneId, title,url) => {
               console.log('Adding agent:', paneId, 'URL:', url);
               if (!agentTabs.find(t => t.paneId === paneId)) {
@@ -1141,30 +1149,21 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
-            {agentTabs.map((tab) => (
-              <div 
-                key={tab.paneId} 
-                className="absolute"
-                style={{
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor:"#474747",
-                  zIndex: activeAgentTab === tab.paneId ? 10 : 1
-                }}
-              >
+            {/* Main terminal iframe */}
+            {displayPaneId && (
+              <div key={`terminal-${displayPaneId}`} className="absolute inset-0" style={{backgroundColor:"#474747"}}>
                 <WebFrame
-                  ref={tab.paneId === CurrentPaneId ? mainIframeRef : undefined}
+                  key={`webframe-${displayPaneId}`}
+                  ref={mainIframeRef}
                   loading="lazy"
-                  src={`https://ttyd-proxy.cicy.de5.net/ttyd/${tab.paneId}/?token=${token}&mode=1`}
+                  src={`https://ttyd-proxy.cicy.de5.net/ttyd/${displayPaneId}/?token=${token}&mode=1`}
                   className="w-full h-full"
                   codeServer={true}
                 />
               </div>
-            ))}
+            )}
             <div 
-              id="main-right-top-mask"
+              id="main-middle-mask"
               className="ttyd-mask absolute inset-0 bg-transparent z-10"
               style={{display: 'none', pointerEvents: 'auto'}}
               onClick={(e) => {

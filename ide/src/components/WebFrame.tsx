@@ -38,6 +38,16 @@ export const WebFrame = forwardRef<HTMLIFrameElement, WebFrameProps>(
       return () => wv.removeEventListener('dom-ready', onDomReady);
     }, [useWebview, onLoad]);
 
+    // Update webview src when it changes
+    useEffect(() => {
+      if (!useWebview) return;
+      const wv = webviewRef.current as any;
+      if (!wv || !src) return;
+      if (wv.src !== src) {
+        wv.src = src;
+      }
+    }, [src, useWebview]);
+
     if (useWebview) {
       return (
         <>
