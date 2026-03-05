@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Loader2, Keyboard, Mic, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Home, RefreshCw, MoreVertical, History, GripHorizontal, Plus, Folder } from 'lucide-react';
-import { IframeTopbar } from './components/IframeTopbar';
+import { Loader2, Keyboard, Mic, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Home, RefreshCw, MoreVertical, History, GripHorizontal, Plus, Folder, ChevronDown, ChevronUp } from 'lucide-react';
 import { TtydFrameHandle } from './components/TtydFrame';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
@@ -10,17 +9,18 @@ import { EditPaneDialog, EditPaneData } from './components/EditPaneDialog';
 import { SettingsView } from './components/SettingsView';
 import { AgentControls } from './components/AgentControls';
 import { AgentsListView } from './components/AgentsListView';
+import { AgentsRightView } from './components/AgentsRightView';
 import { CaptureDialog } from './components/CaptureDialog';
 import { getApiUrl,TTYD_BASE,API_BASE } from './services/apiUrl';
 import { AppSettings, Position, Size } from './types';
 import { WebFrame } from './components/WebFrame';
 
 // Read URL query params
-const BOT_NAME = decodeURIComponent(window.location.href.split("/")[4])
+const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4])
 
-console.log({BOT_NAME})
-// const BOT_NAME = new URLSearchParams(window.location.search).get('bot_name') || '';
-const TMUX_TARGET = `${BOT_NAME}`;
+console.log({CurrentPaneId})
+// const CurrentPaneId = new URLSearchParams(window.location.search).get('bot_name') || '';
+const TMUX_TARGET = `${CurrentPaneId}`;
 
 const DEFAULT_SETTINGS: AppSettings = {
   panelPosition: { x: Math.max(20, window.innerWidth - 380), y: Math.max(60, window.innerHeight - 240) },
@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   agent_duty: ''
 };
 
-const STORAGE_KEY = `ttyd_app_settings_v1_${BOT_NAME}`;
+const STORAGE_KEY = `ttyd_app_settings_v1_${CurrentPaneId}`;
 
 declare global {
   interface Window {
@@ -64,40 +64,31 @@ const App: React.FC = () => {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [readOnly, setReadOnly] = useState(true);
   const [isRestarting, setIsRestarting] = useState(false);
-  const [iframeKey, setIframeKey] = useState(0);
   const [captureOutput, setCaptureOutput] = useState<string | null>(null);
   const [agentStatus, setAgentStatus] = useState('idle');
   const [contextUsage, setContextUsage] = useState<number | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [ttydWidth, setTtydWidth] = useState(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_ttydWidth`);
+    const saved = localStorage.getItem(`${CurrentPaneId}_ttydWidth`);
     return saved ? parseInt(saved) : 640;
   });
   const [ttydPreviewHeight, setTtydPreviewHeight] = useState(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_ttydPreviewHeight`);
+    const saved = localStorage.getItem(`${CurrentPaneId}_ttydPreviewHeight`);
     return saved ? parseInt(saved) : 300;
   });
   const [isAgentsMinimized, setIsAgentsMinimized] = useState(false);
   const [isAgentsMaximized, setIsAgentsMaximized] = useState(false);
   const [commandPanelHeight, setCommandPanelHeight] = useState(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_commandPanelHeight`);
+    const saved = localStorage.getItem(`${CurrentPaneId}_commandPanelHeight`);
     return saved ? parseInt(saved) : 220;
   });
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState<'Code' | 'Services' | 'Docs' | 'Preview' | 'Agents' | 'Settings'>(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_activeTab`);
+    const saved = localStorage.getItem(`${CurrentPaneId}_activeTab`);
     return (saved as any) || 'Code';
   });
-  const [servicesTab, setServicesTab] = useState<'Electron' | 'Mysql' | 'Monitor' | 'VNC'>(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_servicesTab`);
-    return (saved as any) || 'Electron';
-  });
-  const [docsTab, setDocsTab] = useState<'Fast-api' | 'Electron'>(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_docsTab`);
-    return (saved as any) || 'Fast-api';
-  });
   const [previewTab, setPreviewTab] = useState<number>(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_previewTab`);
+    const saved = localStorage.getItem(`${CurrentPaneId}_previewTab`);
     return saved ? parseInt(saved) : 0;
   });
   const [boundAgents, setBoundAgents] = useState<string[]>([]);
@@ -108,31 +99,30 @@ const App: React.FC = () => {
   const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [agentCaptureOpen, setAgentCaptureOpen] = useState(false);
   const [showTtydInCode, setShowTtydInCode] = useState(() => {
-    const saved = localStorage.getItem(`${BOT_NAME}_showTtydInCode`);
+    const saved = localStorage.getItem(`${CurrentPaneId}_showTtydInCode`);
     return saved !== 'false';
   });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showDesktopDialog, setShowDesktopDialog] = useState(false);
 
   const [isInteracting, setIsInteracting] = useState(false);
-  const [multiTerminalMode, setMultiTerminalMode] = useState(false);
   const [editingPane, setEditingPane] = useState<EditPaneData | null>(null);
   const [isSavingPane, setIsSavingPane] = useState(false);
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
-
+  const [agentTabs, setAgentTabs] = useState<Array<{paneId: string, title:string,url: string, closable: boolean}>>([]);
+  console.log({agentTabs})
+  const [activeAgentTab, setActiveAgentTab] = useState<string>(CurrentPaneId);
   const [networkLatency, setNetworkLatency] = useState<number | null>(null);
   const [networkStatus, setNetworkStatus] = useState<'excellent' | 'good' | 'poor' | 'offline'>('good');
   const [toast, setToast] = useState<string | null>(null);
-
   const [isListening, setIsListening] = useState(false);
   const voiceModeRef = useRef<'append' | 'direct'>('append');
   const voiceTranscriptRef = useRef<string>('');
   const commandPanelRef = useRef<CommandPanelHandle>(null);
-  const iframeRef = useRef<TtydFrameHandle>(null);
   const mainIframeRef = useRef<HTMLIFrameElement>(null);
 
-  const iframeUrl = `${TTYD_BASE}/ttyd/${BOT_NAME}/?token=${token || ''}`;
   const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
 
   const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
@@ -252,13 +242,13 @@ const App: React.FC = () => {
         }
 
         try {
-          const paneIdToLoad = BOT_NAME.includes(':') ? BOT_NAME : `${BOT_NAME}:main.0`;
+          const paneIdToLoad = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
           const res = await fetch(`${API_BASE}/api/ttyd/config/${encodeURIComponent(paneIdToLoad)}`, {
             headers: { 'Accept': 'application/json' }
           });
           if (res.ok) {
             const data = await res.json();
-            const title = data.title || BOT_NAME;
+            const title = data.title || CurrentPaneId;
             setPaneTitle(title);
             setPaneWorkspace(data.workspace || '');
             setPaneAgentDuty(data.agent_duty || '');
@@ -283,7 +273,7 @@ const App: React.FC = () => {
             
             // Fetch bound agents
             try {
-              const agentsRes = await fetch(`${API_BASE}/api/agents/pane/${encodeURIComponent(BOT_NAME)}`, {
+              const agentsRes = await fetch(`${API_BASE}/api/agents/pane/${encodeURIComponent(CurrentPaneId)}`, {
                 headers: { 'Authorization': `Bearer ${urlToken}` }
               });
               if (agentsRes.ok) {
@@ -294,12 +284,12 @@ const App: React.FC = () => {
               console.error('Failed to fetch agents', e);
             }
           } else {
-            setPaneTitle(BOT_NAME);
-            document.title = BOT_NAME;
+            setPaneTitle(CurrentPaneId);
+            document.title = CurrentPaneId;
           }
         } catch {
-          setPaneTitle(BOT_NAME);
-          document.title = BOT_NAME;
+          setPaneTitle(CurrentPaneId);
+          document.title = CurrentPaneId;
         }
 
         setIsLoaded(true);
@@ -335,6 +325,17 @@ const App: React.FC = () => {
     };
     init();
   }, []);
+
+  // Initialize main agent tab when token is ready
+  useEffect(() => {
+    if (token && agentTabs.length === 0) {
+      setAgentTabs([{
+        paneId: CurrentPaneId,
+        url: `https://ttyd-proxy.cicy.de5.net/ttyd/${CurrentPaneId}/?token=${token}&mode=1`,
+        closable: false
+      }]);
+    }
+  }, [token]);
 
   // Verify token and get permissions
   useEffect(() => {
@@ -391,7 +392,7 @@ const App: React.FC = () => {
   // Reload config when switching to Preview tab
   useEffect(() => {
     if (activeTab === 'Preview' && token) {
-      fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(BOT_NAME)}`, {
+      fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(CurrentPaneId)}`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       })
         .then(res => res.ok ? res.json() : null)
@@ -416,7 +417,7 @@ const App: React.FC = () => {
       const startTime = performance.now();
       try {
         const { data } = await axios.get(
-          `${API_BASE}/api/tmux/status?id=${encodeURIComponent(BOT_NAME)}`,
+          `${API_BASE}/api/tmux/status?id=${encodeURIComponent(CurrentPaneId)}`,
           {
             headers: { 'Authorization': `Bearer ${token}` },
             timeout: 1500
@@ -560,7 +561,7 @@ const App: React.FC = () => {
   };
 
   const handleRestart = async (pane_id?: string) => {
-    const targetPane = pane_id || BOT_NAME;
+    const targetPane = pane_id || CurrentPaneId;
     if (!confirm(`Restart tmux and ttyd for ${targetPane}?`)) return;
     setIsRestarting(true);
     try {
@@ -628,14 +629,14 @@ const App: React.FC = () => {
     setIsSavingPane(true);
     try {
       // Add :main.0 suffix if not present
-      const paneIdToSave = BOT_NAME.includes(':') ? BOT_NAME : `${BOT_NAME}:main.0`;
+      const paneIdToSave = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
       const res = await fetch(`${API_BASE}/api/ttyd/config/${encodeURIComponent(paneIdToSave)}`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToSave),
       });
       if (res.ok) {
-        setPaneTitle(dataToSave.title || BOT_NAME);
+        setPaneTitle(dataToSave.title || CurrentPaneId);
         setPaneWorkspace(dataToSave.workspace || '');
         setPaneAgentDuty(dataToSave.agent_duty || '');
         setPaneAgentType(dataToSave.agent_type || '');
@@ -654,7 +655,7 @@ const App: React.FC = () => {
           console.error('Failed to parse config:', e);
         }
         
-        document.title = dataToSave.title || BOT_NAME;
+        document.title = dataToSave.title || CurrentPaneId;
         setTempPaneData(null);
       }
     } catch (e) { console.error('Failed to save pane:', e); }
@@ -685,7 +686,7 @@ const App: React.FC = () => {
                 key={tab}
                 onClick={() => {
                   setActiveTab(tab);
-                  localStorage.setItem(`${BOT_NAME}_activeTab`, tab);
+                  localStorage.setItem(`${CurrentPaneId}_activeTab`, tab);
                 }}
                 className={`px-4 py-1 rounded text-sm ${activeTab === tab ? 'bg-vsc-bg text-vsc-text' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover'}`}
               >
@@ -769,7 +770,7 @@ const App: React.FC = () => {
                         };
                         const onMouseUp = () => {
                           setIsDragging(false);
-                          localStorage.setItem(`${BOT_NAME}_ttydPreviewHeight`, ttydPreviewHeight.toString());
+                          localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, ttydPreviewHeight.toString());
                           document.removeEventListener('mousemove', onMouseMove);
                           document.removeEventListener('mouseup', onMouseUp);
                         };
@@ -785,7 +786,7 @@ const App: React.FC = () => {
                         <div className="flex gap-4 items-center">
                           {!isAgentsMinimized && (
                             <AgentControls 
-                              paneId={BOT_NAME} 
+                              paneId={CurrentPaneId} 
                               token={token} 
                               boundAgents={boundAgents}
                               onAgentAdded={() => {
@@ -803,7 +804,7 @@ const App: React.FC = () => {
                               setTtydPreviewHeight(32);
                               setIsAgentsMinimized(true);
                               setIsAgentsMaximized(false);
-                              localStorage.setItem(`${BOT_NAME}_ttydPreviewHeight`, '32');
+                              localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, '32');
                             }}
                             className="text-vsc-text-secondary hover:text-vsc-text text-xs"
                             title="Minimize"
@@ -820,7 +821,7 @@ const App: React.FC = () => {
                               setTtydPreviewHeight(300);
                               setIsAgentsMinimized(false);
                               setIsAgentsMaximized(false);
-                              localStorage.setItem(`${BOT_NAME}_ttydPreviewHeight`, '300');
+                              localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, '300');
                             }}
                             className="text-vsc-text-secondary hover:text-vsc-text text-xs"
                             title="Medium"
@@ -837,7 +838,7 @@ const App: React.FC = () => {
                               setTtydPreviewHeight(window.innerHeight - 72);
                               setIsAgentsMinimized(false);
                               setIsAgentsMaximized(true);
-                              localStorage.setItem(`${BOT_NAME}_ttydPreviewHeight`, (window.innerHeight - 72).toString());
+                              localStorage.setItem(`${CurrentPaneId}_ttydPreviewHeight`, (window.innerHeight - 72).toString());
                             }}
                             className="text-vsc-text-secondary hover:text-vsc-text text-xs"
                             title="Maximize"
@@ -848,7 +849,7 @@ const App: React.FC = () => {
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <AgentsListView 
-                          paneId={BOT_NAME} 
+                          paneId={CurrentPaneId} 
                           token={token} 
                           isDragging={isDragging} 
                           onAgentsChange={(agents) => setBoundAgents(agents)} 
@@ -891,7 +892,7 @@ const App: React.FC = () => {
                         key={idx}
                         onClick={() => {
                           setPreviewTab(idx);
-                          localStorage.setItem(`${BOT_NAME}_previewTab`, idx.toString());
+                          localStorage.setItem(`${CurrentPaneId}_previewTab`, idx.toString());
                         }}
                         style={{
                           padding: '4px 12px',
@@ -984,7 +985,7 @@ const App: React.FC = () => {
             };
             const onMouseUp = () => {
               setIsDragging(false);
-              localStorage.setItem(`${BOT_NAME}_ttydWidth`, currentWidth.toString());
+              localStorage.setItem(`${CurrentPaneId}_ttydWidth`, currentWidth.toString());
               document.removeEventListener('mousemove', onMouseMove);
               document.removeEventListener('mouseup', onMouseUp);
             };
@@ -1002,17 +1003,43 @@ const App: React.FC = () => {
           }}
         >
           <div className="h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
+            <div id="main-right-topbar" className="flex items-center gap-2 flex-1 min-w-0">
+              {agentTabs.map((tab, idx) => (
+                <div key={tab.paneId} className="relative group flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      console.log('Switching to tab:', tab.paneId);
+                      setActiveAgentTab(tab.paneId);
+                    }}
+                    className={`px-3 py-1 rounded text-sm ${activeAgentTab === tab.paneId ? 'bg-vsc-button text-vsc-button-text' : 'bg-vsc-bg text-vsc-text hover:bg-vsc-bg-hover'}`}
+                  >
+                    {tab.paneId === CurrentPaneId ? paneTitle : (tab.title || tab.paneId)}
+                  </button>
+                  {tab.closable && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Close ${tab.paneId}?`)) {
+                          setAgentTabs(agentTabs.filter(t => t.paneId !== tab.paneId));
+                          if (activeAgentTab === tab.paneId) {
+                            setActiveAgentTab(CurrentPaneId);
+                          }
+                        }
+                      }}
+                      className="absolute -top-2 -right-2 z-[1] w-5 h-5 flex items-center justify-center text-vsc-text-secondary hover:text-red-400 hover:bg-vsc-bg-hover rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Close"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
               <button
-                className="px-3 py-1 rounded text-sm bg-vsc-bg text-vsc-text hover:bg-vsc-bg-hover"
-              >
-                ttyd
-              </button>
-              <button
+                onClick={() => setShowAddPanel(!showAddPanel)}
                 className="w-6 h-6 flex items-center justify-center rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover"
                 title="Add"
               >
-                <Plus size={16} />
+                {showAddPanel ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -1036,7 +1063,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = BOT_NAME.replace(':main.0', '');
+                          const paneId = CurrentPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/choose-session`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1047,7 +1074,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = BOT_NAME.replace(':main.0', '');
+                          const paneId = CurrentPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=v`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1058,7 +1085,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = BOT_NAME.replace(':main.0', '');
+                          const paneId = CurrentPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=h`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1069,7 +1096,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = BOT_NAME.replace(':main.0', '');
+                          const paneId = CurrentPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/unsplit`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1110,14 +1137,16 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="relative w-full" style={{height: 'calc(100% - 40px)'}}>
-            <WebFrame
-              ref={mainIframeRef}
-              loading="lazy"
-              src={`https://ttyd-proxy.cicy.de5.net/ttyd/${BOT_NAME}/?token=${token}&mode=1`}
-              className="w-full h-full"
-              style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - ${commandPanelHeight}px)` : '100%'}}
-            />
+          <div id="main-right-top" className="relative w-full" style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - 40px - ${commandPanelHeight}px)` : 'calc(100% - 40px)'}}>
+           {showAddPanel && <AgentsRightView token={token} existingTabs={agentTabs.map(t => t.paneId)} onAddAgent={(paneId, title,url) => {
+              console.log('Adding agent:', paneId, 'URL:', url);
+              if (!agentTabs.find(t => t.paneId === paneId)) {
+                setAgentTabs([...agentTabs, {paneId,title, url, closable: true}]);
+              }
+              setActiveAgentTab(paneId);
+              setShowAddPanel(false);
+            }} />}
+            
             {showHistoryOverlay && historyData && (
               <div style={{position: 'absolute', top: 0, left: 0, width: '100%', height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - ${commandPanelHeight}px)` : '100%', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 1, display: 'flex', flexDirection: 'column'}}>
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #474747', backgroundColor: '#1e1e1e'}}>
@@ -1165,7 +1194,30 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
+            {agentTabs.map((tab) => (
+              <div 
+                key={tab.paneId} 
+                className="absolute"
+                style={{
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor:"#474747",
+                  zIndex: activeAgentTab === tab.paneId ? 10 : 1
+                }}
+              >
+                <WebFrame
+                  ref={tab.paneId === CurrentPaneId ? mainIframeRef : undefined}
+                  loading="lazy"
+                  src={`https://ttyd-proxy.cicy.de5.net/ttyd/${tab.paneId}/?token=${token}&mode=1`}
+                  className="w-full h-full"
+                  codeServer={true}
+                />
+              </div>
+            ))}
             <div 
+              id="main-right-top-mask"
               className="ttyd-mask absolute inset-0 bg-transparent z-10"
               style={{display: 'none', pointerEvents: 'auto'}}
               onClick={(e) => {
@@ -1294,7 +1346,7 @@ const App: React.FC = () => {
                   };
                   const onMouseUp = () => {
                     setIsDragging(false);
-                    localStorage.setItem(`${BOT_NAME}_commandPanelHeight`, commandPanelHeight.toString());
+                    localStorage.setItem(`${CurrentPaneId}_commandPanelHeight`, commandPanelHeight.toString());
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
                   };
@@ -1305,7 +1357,7 @@ const App: React.FC = () => {
               <CommandPanel
                 ref={commandPanelRef}
                 paneTarget={TMUX_TARGET}
-                title={paneTitle || BOT_NAME}
+                title={paneTitle || CurrentPaneId}
                 token={token}
                 panelPosition={{x: 0, y: 0}}
                 panelSize={{width: ttydWidth, height: commandPanelHeight}}
@@ -1419,7 +1471,7 @@ const App: React.FC = () => {
         <CommandPanel
           ref={commandPanelRef}
           paneTarget={TMUX_TARGET}
-          title={paneTitle || BOT_NAME}
+          title={paneTitle || CurrentPaneId}
           token={token}
           panelPosition={settings.panelPosition}
           panelSize={settings.panelSize}
@@ -1482,7 +1534,7 @@ const App: React.FC = () => {
         onClose={() => setCaptureOutput(null)}
         onRefresh={(paneId, lines) => handleCapturePane(paneId, lines)}
         isRefreshing={isCapturing}
-        paneId={BOT_NAME}
+        paneId={CurrentPaneId}
       />
 
 
