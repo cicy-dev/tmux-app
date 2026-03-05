@@ -125,6 +125,7 @@ const App: React.FC = () => {
   const mainIframeRef = useRef<HTMLIFrameElement>(null);
 
   const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
+  const [visitedPanes, setVisitedPanes] = useState<string[]>([]);
 
   // Compute display values after all state is defined
   const currentPane = allPanes.find((p: any) => p.pane_id === currentPaneId);
@@ -132,6 +133,13 @@ const App: React.FC = () => {
   const displayPaneTitle = currentPane?.title || paneTitle || displayPaneId || 'No pane selected';
 
   const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
+
+  // Add displayPaneId to visitedPanes when it changes
+  useEffect(() => {
+    if (displayPaneId && !visitedPanes.includes(displayPaneId)) {
+      setVisitedPanes(prev => [...prev, displayPaneId]);
+    }
+  }, [displayPaneId]);
 
   const navigateToPath = async (path: string, forceRefresh = false) => {
     console.log('navigateToPath called:', path, 'forceRefresh:', forceRefresh);
@@ -1149,19 +1157,26 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
-            {/* Main terminal iframe */}
-            {displayPaneId && (
-              <div key={`terminal-${displayPaneId}`} className="absolute inset-0" style={{backgroundColor:"#474747"}}>
+            {/* Terminal iframes - keep all visited panes loaded */}
+            {visitedPanes.map((paneId) => (
+              <div 
+                key={`terminal-${paneId}`} 
+                className="absolute inset-0" 
+                style={{
+                  backgroundColor:"#474747",
+                  zIndex: paneId === displayPaneId ? 1 : 0,
+                  visibility: paneId === displayPaneId ? 'visible' : 'hidden'
+                }}
+              >
                 <WebFrame
-                  key={`webframe-${displayPaneId}`}
-                  ref={mainIframeRef}
+                  ref={paneId === displayPaneId ? mainIframeRef : undefined}
                   loading="lazy"
-                  src={`https://ttyd-proxy.cicy.de5.net/ttyd/${displayPaneId}/?token=${token}&mode=1`}
+                  src={`https://ttyd-proxy.cicy.de5.net/ttyd/${paneId}/?token=${token}&mode=1`}
                   className="w-full h-full"
                   codeServer={true}
                 />
               </div>
-            )}
+            ))}
             <div 
               id="main-middle-mask"
               className="ttyd-mask absolute inset-0 bg-transparent z-10"
