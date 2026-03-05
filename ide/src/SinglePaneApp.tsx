@@ -316,7 +316,7 @@ const App: React.FC = () => {
           const res = await fetch(getApiUrl('/api/tmux'), {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${savedToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: '', target: TMUX_TARGET })
+            body: JSON.stringify({ text: '', target: displayPaneId })
           });
           if (res.ok || res.status === 200) setToken(savedToken);
           else localStorage.removeItem('token');
@@ -474,7 +474,7 @@ const App: React.FC = () => {
       await fetch(getApiUrl('/api/tmux'), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, target: TMUX_TARGET })
+        body: JSON.stringify({ text, target: displayPaneId })
       });
     } catch (e) {
       console.error('Failed to send voice command:', e);
@@ -565,7 +565,7 @@ const App: React.FC = () => {
       const res = await fetch(`${API_BASE}/api/tmux/capture_pane`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ pane_id: pane_id || TMUX_TARGET, lines: lines || 100 })
+        body: JSON.stringify({ pane_id: pane_id || displayPaneId, lines: lines || 100 })
       });
       if (res.ok) {
         const data = await res.json();
@@ -576,7 +576,7 @@ const App: React.FC = () => {
   };
 
   const handleRestart = async (pane_id?: string) => {
-    const targetPane = pane_id || CurrentPaneId;
+    const targetPane = pane_id || displayPaneId;
     if (!confirm(`Restart tmux and ttyd for ${targetPane}?`)) return;
     setIsRestarting(true);
     try {
@@ -614,7 +614,7 @@ const App: React.FC = () => {
 
   const handleSavePane = async () => {
     const dataToSave = {
-      target: TMUX_TARGET, 
+      target: displayPaneId, 
       title: tempPaneData?.title ?? paneTitle, 
       workspace: tempPaneData?.workspace ?? paneWorkspace, 
       agent_duty: tempPaneData?.agent_duty ?? paneAgentDuty, 
@@ -982,14 +982,6 @@ const App: React.FC = () => {
           id="main-middle" 
           className="absolute inset-0" 
           style={{width: `${ttydWidth}px`, left: '256px'}}
-        >
-          <MiddlePanel />
-        </div>
-        {/* Column 2: Middle - Terminal */}
-        <div 
-          id="main-middle" 
-          className="absolute inset-0" 
-          style={{width: `${ttydWidth}px`, left: '256px'}}
           onMouseLeave={(e) => {
             const target = e.currentTarget.querySelector('.ttyd-mask') as HTMLElement;
             if (target) target.style.display = 'block';
@@ -1026,7 +1018,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = CurrentPaneId.replace(':main.0', '');
+                          const paneId = displayPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/choose-session`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1037,7 +1029,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = CurrentPaneId.replace(':main.0', '');
+                          const paneId = displayPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=v`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1048,7 +1040,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = CurrentPaneId.replace(':main.0', '');
+                          const paneId = displayPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=h`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1059,7 +1051,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={async () => {
-                          const paneId = CurrentPaneId.replace(':main.0', '');
+                          const paneId = displayPaneId.replace(':main.0', '');
                           await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/unsplit`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
                           setShowMoreMenu(false);
                         }} 
@@ -1182,7 +1174,7 @@ const App: React.FC = () => {
               className="ttyd-mask absolute inset-0 bg-transparent z-10"
               style={{display: 'none', pointerEvents: 'auto'}}
               onClick={(e) => {
-                window.dispatchEvent(new CustomEvent('selectPane', { detail: { paneId: TMUX_TARGET } }));
+                window.dispatchEvent(new CustomEvent('selectPane', { detail: { paneId: displayPaneId } }));
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
@@ -1299,8 +1291,8 @@ const App: React.FC = () => {
               ></div>
               <CommandPanel
                 ref={commandPanelRef}
-                paneTarget={TMUX_TARGET}
-                title={paneTitle || CurrentPaneId}
+                paneTarget={displayPaneId}
+                title={displayPaneTitle}
                 token={token}
                 panelPosition={{x: 0, y: 0}}
                 panelSize={{width: ttydWidth, height: commandPanelHeight}}
