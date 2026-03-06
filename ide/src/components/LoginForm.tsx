@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
 import apiService from '../services/api';
+import { TokenManager } from '../services/tokenManager';
 
 interface LoginFormProps {
   onLogin: (token: string) => void;
@@ -15,11 +16,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     if (!tokenValue) return;
 
     try {
-      localStorage.setItem('token', tokenValue);
+      TokenManager.saveToken(tokenValue);
       await apiService.verifyAuth(tokenValue);
       onLogin(tokenValue);
     } catch (err) {
-      localStorage.removeItem('token');
+      TokenManager.clearToken();
       alert('Invalid token or connection failed');
     }
   };

@@ -1,10 +1,11 @@
 import axios from 'axios';
 import config from '../config';
+import { TokenManager } from './tokenManager';
 
 const http = axios.create({ baseURL: config.apiBase });
 
 http.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem('token');
+  const token = TokenManager.getToken();
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });

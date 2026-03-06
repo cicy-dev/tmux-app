@@ -12,6 +12,7 @@ import { CaptureDialog } from './components/CaptureDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import config, { urls } from './config';
 import apiService from './services/api';
+import { TokenManager } from './services/tokenManager';
 import { AppSettings, Position, Size } from './types';
 import { WebFrame } from './components/WebFrame';
 import { useApp } from './contexts/AppContext';
@@ -245,7 +246,7 @@ const App: React.FC = () => {
     const init = async () => {
       const urlToken = new URLSearchParams(window.location.search).get('token');
       if (urlToken) {
-        localStorage.setItem('token', urlToken);
+        TokenManager.saveToken(urlToken);
         setToken(urlToken);
         setIsCheckingAuth(false);
 
@@ -308,14 +309,14 @@ const App: React.FC = () => {
         return;
       }
 
-      const savedToken = localStorage.getItem('token');
+      const savedToken = TokenManager.getToken();
       if (savedToken) {
         try {
           await apiService.getPanes();
           setToken(savedToken);
         } catch (e) {
           console.error('Token verification failed', e);
-          localStorage.removeItem('token');
+          TokenManager.clearToken();
         }
       }
       setIsCheckingAuth(false);
