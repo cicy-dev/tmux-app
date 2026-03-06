@@ -1,116 +1,60 @@
-import { getApiUrl } from './apiUrl';
+import axios from 'axios';
+import config from '../config';
 
-class ApiClient {
-  private token: string;
+const http = axios.create({ baseURL: config.apiBase });
 
-  constructor(token: string) {
-    this.token = token;
-  }
+http.interceptors.request.use((cfg) => {
+  const token = localStorage.getItem('token');
+  if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  return cfg;
+});
 
-  setToken(token: string) {
-    this.token = token;
-  }
-
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = getApiUrl(endpoint);
-    const headers = {
-      'Authorization': `Bearer ${this.token}`,
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-
-    const response = await fetch(url, { ...options, headers });
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(error.detail || `HTTP ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  // Agents
-  async getAgents() {
-    return this.request('/api/tmux/status/all');
-  }
-
-  async createAgent(data: { win_name: string; workspace: string; init_script: string }) {
-    return this.request('/api/tmux/create', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async deleteAgent(paneId: string) {
-    return this.request(`/api/tmux/panes/${paneId}`, { method: 'DELETE' });
-  }
-
-  async unbindAgent(agentId: number) {
-    return this.request(`/api/agents/unbind/${agentId}`, { method: 'DELETE' });
-  }
-
-  async bindAgent(paneId: string, agentName: string) {
-    return this.request('/api/agents/bind', {
-      method: 'POST',
-      body: JSON.stringify({ pane_id: paneId, agent_name: agentName }),
-    });
-  }
-
-  async restartAgent(paneId: string) {
-    return this.request(`/api/tmux/panes/${paneId}/restart`, { method: 'POST' });
-  }
-
-  async toggleMouse(paneId: string) {
-    return this.request(`/api/tmux/mouse/toggle?pane_id=${encodeURIComponent(paneId)}`, {
-      method: 'POST',
-    });
-  }
+const api = {
+  // Auth
+  verifyToken:      ()                                     => http.post('/api/auth/verify-token'),
+  verifyAuth:       (token: string)                        => http.post('/api/auth/verify', { token }),
 
   // Panes
-  async getPanes() {
-    return this.request('/api/tmux/panes');
-  }
+  getPanes:         ()                                     => http.get('/api/tmux'),
+  getAllStatus:      ()                                     => http.get('/api/tmux/status/all'),
+  getPane:          (id: string)                           => http.get(`/api/tmux/panes/${encodeURIComponent(id)}`),
+  updatePane:       (id: string, data: any)                => http.patch(`/api/tmux/panes/${encodeURIComponent(id)}`, data),
+  deletePane:       (id: string)                           => http.delete(`/api/tmux/panes/${encodeURIComponent(id)}`),
+  createPane:       (data: any)                            => http.post('/api/tmux/create', data),
+  restartPane:      (id: string)                           => http.post(`/api/tmux/panes/${encodeURIComponent(id)}/restart`),
+  capturePane:      (id: string)                           => http.get('/api/tmux/capture_pane', { params: { pane_id: id } }),
 
-  async getPane(paneId: string) {
-    return this.request(`/api/tmux/panes/${paneId}`);
-  }
+  // Tmux operations
+  sendCommand:      (winId: string, keys: string)          => http.post('/api/tmux/send', { win_id: winId, keys }),
+  sendKeys:         (winId: string, keys: string)          => http.post('/api/tmux/send-keys', { win_id: winId, keys }),
+  toggleMouse:      (mode: string, paneId: string)         => http.post(`/api/tmux/mouse/${mode}`, null, { params: { pane_id: paneId } }),
+  chooseSession:    (id: string)                           => http.post(`/api/tmux/panes/${encodeURIComponent(id)}/choose-session`),
+  splitPane:        (id: string, dir: string)              => http.post(`/api/tmux/panes/${encodeURIComponent(id)}/split`, null, { params: { direction: dir } }),
+  unsplitPane:      (id: string)                           => http.post(`/api/tmux/panes/${encodeURIComponent(id)}/unsplit`),
 
-  async getPaneConfig(paneId: string) {
-    return this.request(`/api/ttyd/config/${paneId}`);
-  }
+  // Agents
+  deleteAgent:      (id: string)                           => http.delete(`/api/agents/${encodeURIComponent(id)}`),
+  getAgentsByPane:  (id: string)                           => http.get(`/api/agents/pane/${encodeURIComponent(id)}`),
+  bindAgent:        (data: any)                            => http.post('/api/agents/bind', data),
+  unbindAgent:      (agentId: number)                      => http.delete(`/api/agents/unbind/${agentId}`),
 
-  async updatePaneConfig(paneId: string, config: any) {
-    return this.request(`/api/ttyd/config/${paneId}`, {
-      method: 'PUT',
-      body: JSON.stringify(config),
-    });
-  }
+  // TTYD
+  getTtydConfig:    (id: string)                           => http.get(`/api/ttyd/config/${encodeURIComponent(id)}`),
+  updateTtydConfig: (id: string, data: any)                => http.put(`/api/ttyd/config/${encodeURIComponent(id)}`, data),
+  getTtydStatus:    (id: string)                           => http.get(`/api/ttyd/status/${encodeURIComponent(id)}`),
 
-  async updatePane(paneId: string, data: any) {
-    return this.request(`/api/tmux/panes/${paneId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
+  // Utils
+  correctEnglish:   (text: string)                         => http.post('/api/correctEnglish', { text }),
+  fileExists:       (path: string)                         => http.get('/api/utils/file/exists', { params: { path } }),
+  stt:              (formData: FormData)                   => http.post('/stt', formData, { baseURL: config.sttBase, headers: { 'Content-Type': 'multipart/form-data' } }),
 
-  async capturePane(paneId: string) {
-    return this.request(`/api/tmux/capture?pane_id=${encodeURIComponent(paneId)}`);
-  }
+  // Global settings
+  getGlobalSettings:    ()                                 => http.get('/api/settings/global'),
+  updateGlobalSettings: (data: any)                        => http.post('/api/settings/global', data),
 
-  // Commands
-  async sendCommand(target: string, command: string) {
-    return this.request('/api/tmux/send', {
-      method: 'POST',
-      body: JSON.stringify({ target, command }),
-    });
-  }
+  // Pane list (legacy)
+  getPaneList:      ()                                     => http.get('/api/tmux/panes'),
+  listPanes:        ()                                     => http.get('/api/tmux/list'),
+};
 
-  async correctEnglish(text: string) {
-    return this.request('/api/correctEnglish', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
-  }
-}
-
-export default ApiClient;
+export default api;

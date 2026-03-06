@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Plus } from 'lucide-react';
-import { getApiUrl } from '../services/apiUrl';
+import apiService from '../services/api';
 
 interface Agent {
   id: number;
@@ -26,13 +26,8 @@ export const AgentsView: React.FC<AgentsViewProps> = ({ paneId, token }) => {
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch(getApiUrl(`/api/agents/pane/${paneId}`), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAgents(data);
-      }
+      const { data } = await apiService.getAgentsByPane(paneId);
+      setAgents(data);
     } catch (err) {
       console.error('Failed to fetch agents:', err);
     } finally {
@@ -42,13 +37,8 @@ export const AgentsView: React.FC<AgentsViewProps> = ({ paneId, token }) => {
 
   const fetchAllAgents = async () => {
     try {
-      const res = await fetch(getApiUrl('/api/tmux/list'), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAllAgents(data);
-      }
+      const { data } = await apiService.listPanes();
+      setAllAgents(data);
     } catch (err) {
       console.error('Failed to fetch all agents:', err);
     }
@@ -57,18 +47,9 @@ export const AgentsView: React.FC<AgentsViewProps> = ({ paneId, token }) => {
   const handleAddAgent = async () => {
     if (!selectedAgent) return;
     try {
-      const res = await fetch(getApiUrl('/api/agents/bind'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ pane_id: paneId, agent_name: selectedAgent })
-      });
-      if (res.ok) {
-        fetchAgents();
-        setSelectedAgent('');
-      }
+      await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent });
+      fetchAgents();
+      setSelectedAgent('');
     } catch (err) {
       console.error('Failed to add agent:', err);
     }
@@ -76,13 +57,8 @@ export const AgentsView: React.FC<AgentsViewProps> = ({ paneId, token }) => {
 
   const handleRemoveAgent = async (agentId: number) => {
     try {
-      const res = await fetch(getApiUrl(`/api/agents/unbind/${agentId}`), {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchAgents();
-      }
+      await apiService.unbindAgent(agentId);
+      fetchAgents();
     } catch (err) {
       console.error('Failed to remove agent:', err);
     }

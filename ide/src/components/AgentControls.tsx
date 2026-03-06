@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { getApiUrl } from '../services/apiUrl';
+import apiService from '../services/api';
 
 interface AgentControlsProps {
   paneId: string;
@@ -20,14 +20,8 @@ export const AgentControls: React.FC<AgentControlsProps> = ({ paneId, token, bou
 
   const fetchAllAgents = async () => {
     try {
-      const res = await fetch(getApiUrl('/api/tmux/panes'), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        console.log('Fetched agents:', data);
-        setAllAgents(Array.isArray(data) ? data : (data.panes || []));
-      }
+      const { data } = await apiService.getPaneList();
+      setAllAgents(Array.isArray(data) ? data : (data.panes || []));
     } catch (err) {
       console.error('Failed to fetch all agents:', err);
     }
@@ -36,36 +30,22 @@ export const AgentControls: React.FC<AgentControlsProps> = ({ paneId, token, bou
   const handleAddAgent = async () => {
     if (!selectedAgent) return;
     try {
-      const res = await fetch(getApiUrl('/api/agents/bind'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ pane_id: paneId, agent_name: selectedAgent })
-      });
-      if (res.ok) {
-        const newAgent = await res.json();
-        setSelectedAgent('');
-        // 触发事件并携带新 agent 信息
-        window.dispatchEvent(new CustomEvent('addAgent', { detail: { 
-          id: newAgent.id, 
-          name: selectedAgent, 
-          status: newAgent.status || 'active',
-          title: selectedAgent
-        }}));
-        onAgentAdded?.();
+      const { data: newAgent } = await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent });
+      setSelectedAgent('');
+      window.dispatchEvent(new CustomEvent('addAgent', { detail: { 
+        id: newAgent.id, 
+        name: selectedAgent, 
+        status: newAgent.status || 'active',
+        title: selectedAgent
+      }}));
+      onAgentAdded?.();
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      if (detail?.includes('already bound')) {
+        alert(`This agent is already bound. Please unbind it first or refresh the page.`);
       } else {
-        const error = await res.json();
-        // 如果已经绑定，提示用户
-        if (error.detail?.includes('already bound')) {
-          alert(`This agent is already bound. Please unbind it first or refresh the page.`);
-        } else {
-          alert(`Failed to add agent: ${error.detail || 'Unknown error'}`);
-        }
+        alert(`Failed to add agent: ${detail || err.message}`);
       }
-    } catch (err) {
-      alert(`Error: ${err}`);
     }
   };
 
@@ -73,47 +53,26 @@ export const AgentControls: React.FC<AgentControlsProps> = ({ paneId, token, bou
     if (!confirm('Create a new agent?')) return;
     setIsCreating(true);
     try {
-      const res = await fetch(getApiUrl('/api/tmux/create'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          win_name: `SubAgent(${paneId})`,
-          workspace: '',
-          init_script: 'pwd'
-        })
+      const { data } = await apiService.createPane({
+        win_name: `SubAgent(${paneId})`,
+        workspace: '',
+        init_script: 'pwd'
       });
-      const data = await res.json();
-      if (res.ok && data.pane_id) {
-        const bindRes = await fetch(getApiUrl('/api/agents/bind'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ pane_id: paneId, agent_name: data.pane_id })
-        });
-        if (bindRes.ok) {
-          const newAgent = await bindRes.json();
-          await fetchAllAgents();
-          // 触发事件并携带新 agent 信息
-          window.dispatchEvent(new CustomEvent('addAgent', { detail: { 
-            id: newAgent.id, 
-            name: data.pane_id, 
-            status: newAgent.status || 'active',
-            title: `SubAgent(${paneId})`
-          }}));
-          onAgentAdded?.();
-        } else {
-          alert(`Failed to bind: ${await bindRes.text()}`);
-        }
+      if (data.pane_id) {
+        const { data: newAgent } = await apiService.bindAgent({ pane_id: paneId, agent_name: data.pane_id });
+        await fetchAllAgents();
+        window.dispatchEvent(new CustomEvent('addAgent', { detail: { 
+          id: newAgent.id, 
+          name: data.pane_id, 
+          status: newAgent.status || 'active',
+          title: `SubAgent(${paneId})`
+        }}));
+        onAgentAdded?.();
       } else {
         alert(`Failed: ${data.detail || data.error || 'Unknown error'}`);
       }
-    } catch (err) {
-      alert(`Error: ${err}`);
+    } catch (err: any) {
+      alert(`Error: ${err.response?.data?.detail || err.message}`);
     } finally {
       setIsCreating(false);
     }

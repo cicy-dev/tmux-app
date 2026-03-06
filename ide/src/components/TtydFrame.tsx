@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { getTtydUrl } from '../services/apiUrl';
+import { urls } from '../config';
 import { WebFrame } from './WebFrame';
 
 interface TtydFrameProps {
@@ -20,7 +20,7 @@ export interface TtydFrameHandle {
 export const TtydFrame = forwardRef<TtydFrameHandle, TtydFrameProps>(
   ({ paneId, port, token, url, isInteractingWithOverlay }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const ttydUrl = url || (paneId && token ? getTtydUrl(paneId, token) : '');
+    const ttydUrl = url || (paneId && token ? urls.ttydOpen(paneId, token) : '');
 
     useImperativeHandle(ref, () => ({
       scrollToBottom: () => {

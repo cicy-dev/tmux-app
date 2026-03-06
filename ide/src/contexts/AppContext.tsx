@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import ApiClient from '../services/api';
 import { TokenManager } from '../services/tokenManager';
 import { PaneManager } from '../services/paneManager';
+import apiService from '../services/api';
 import config from '../config';
 
 const APP_VERSION = config.version;
@@ -206,10 +207,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const loadGlobalVar = useCallback(async () => {
     if (!api) return;
     try {
-      const res = await fetch(`${config.apiBase}/api/settings/global`, {
-        headers: { 'Authorization': `Bearer ${api.token}` }
-      });
-      const data = await res.json();
+      const { data } = await apiService.getGlobalSettings();
       setGlobalVar(data);
     } catch (err: any) {
       console.error('Failed to load global settings:', err);
@@ -219,14 +217,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateGlobalVar = useCallback(async (data: any) => {
     if (!api) return;
     try {
-      await fetch(`${config.apiBase}/api/settings/global`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${api.token}`,
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify(data)
-      });
+      await apiService.updateGlobalSettings(data);
       setGlobalVar(data);
     } catch (err: any) {
       console.error('Failed to update global settings:', err);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getApiUrl } from '../services/apiUrl';
+import apiService from '../services/api';
 import { urls } from '../config';
 
 interface AgentsRightViewProps {
@@ -35,12 +35,8 @@ export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAg
     setLoading(false);
 
     // Fetch from API
-    fetch(getApiUrl('/api/tmux/status/all'), {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        console.log('API response:', data);
+    apiService.getAllStatus()
+      .then(({ data }) => {
         const agentsList = Object.values(data);
         setAgents(agentsList);
         localStorage.setItem('agents_cache', JSON.stringify(agentsList));
@@ -119,21 +115,10 @@ export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAg
                         try {
                           // First unbind if agent has an ID
                           if (agent.id) {
-                            await fetch(getApiUrl(`/api/agents/unbind/${agent.id}`), {
-                              method: 'DELETE',
-                              headers: { 'Authorization': `Bearer ${token}` }
-                            });
+                            await apiService.unbindAgent(agent.id);
                           }
-                          // Then delete the pane
-                          const res = await fetch(getApiUrl(`/api/tmux/panes/${agent.pane_id}`), {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                          });
-                          if (res.ok) {
-                            setAgents(agents.filter(a => a.pane_id !== agent.pane_id));
-                          } else {
-                            alert('Failed to remove agent');
-                          }
+                          await apiService.deletePane(agent.pane_id);
+                          setAgents(agents.filter(a => a.pane_id !== agent.pane_id));
                         } catch (err) {
                           console.error('Failed to remove:', err);
                           alert('Error removing agent');

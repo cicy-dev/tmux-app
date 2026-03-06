@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import axios from 'axios';
 import { Loader2, SplitSquareHorizontal, SplitSquareVertical, XSquare, Home, RefreshCw, MoreVertical, Folder, Pin, Unlink, ExternalLink, RotateCw, Trash2 } from 'lucide-react';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
@@ -12,7 +11,7 @@ import { AgentsRightView } from './components/AgentsRightView';
 import { CaptureDialog } from './components/CaptureDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import config, { urls } from './config';
-import { getApiUrl } from './services/apiUrl';
+import apiService from './services/api';
 import { AppSettings, Position, Size } from './types';
 import { WebFrame } from './components/WebFrame';
 import { useApp } from './contexts/AppContext';
@@ -169,10 +168,7 @@ const App: React.FC = () => {
     
     // Path is different, check if exists
     try {
-      const res = await fetch(`${config.apiBase}/api/utils/file/exists?path=${encodeURIComponent(path)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const { data } = await apiService.fileExists(path);
       console.log('Path exists check:', data);
       if (!data.exists) {
         setToast(`Path not found: ${path}`);
@@ -249,8 +245,8 @@ const App: React.FC = () => {
       setIsTogglingMouse(true);
       const newMode = mouseMode === 'on' ? 'off' : 'on';
       try {
-        const res = await fetch(getApiUrl(`/api/tmux/mouse/${newMode}`), { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) setMouseMode(newMode);
+        await apiService.toggleMouse(newMode, displayPaneId);
+        setMouseMode(newMode);
       } catch {}
       setIsTogglingMouse(false);
     };
@@ -278,11 +274,8 @@ const App: React.FC = () => {
 
         try {
           const paneIdToLoad = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
-          const res = await fetch(`${config.apiBase}/api/ttyd/config/${encodeURIComponent(paneIdToLoad)}`, {
-            headers: { 'Accept': 'application/json' }
-          });
-          if (res.ok) {
-            const data = await res.json();
+          const { data } = await apiService.getTtydConfig(paneIdToLoad);
+          if (data) {
             const title = data.title || CurrentPaneId;
             setPaneTitle(title);
             setPaneWorkspace(data.workspace || '/home/w3c_offical');
@@ -308,13 +301,8 @@ const App: React.FC = () => {
             
             // Fetch bound agents
             try {
-              const agentsRes = await fetch(`${config.apiBase}/api/agents/pane/${encodeURIComponent(CurrentPaneId)}`, {
-                headers: { 'Authorization': `Bearer ${urlToken}` }
-              });
-              if (agentsRes.ok) {
-                const agents = await agentsRes.json();
-                setBoundAgents(agents.map((a: any) => a.name));
-              }
+              const { data: agents } = await apiService.getAgentsByPane(CurrentPaneId);
+              setBoundAgents(agents.map((a: any) => a.name));
             } catch (e) {
               console.error('Failed to fetch agents', e);
             }
@@ -334,13 +322,8 @@ const App: React.FC = () => {
       const savedToken = localStorage.getItem('token');
       if (savedToken) {
         try {
-          const res = await fetch(getApiUrl('/api/tmux'), {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${savedToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: '', target: displayPaneId })
-          });
-          if (res.ok || res.status === 200) setToken(savedToken);
-          else localStorage.removeItem('token');
+          await apiService.getPanes();
+          setToken(savedToken);
         } catch (e) {
           console.error('Token verification failed', e);
           localStorage.removeItem('token');
@@ -377,13 +360,8 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!token) return;
     
-    fetch(`${config.apiBase}/api/auth/verify-token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
-    })
-      .then(res => res.json())
-      .then(data => {
+    apiService.verifyToken()
+      .then(({ data }) => {
         if (data.valid && data.perms) {
           setUserPerms(data.perms);
         }
@@ -405,15 +383,12 @@ const App: React.FC = () => {
   // Reload config when switching to Preview tab
   useEffect(() => {
     if (activeTab === 'Preview' && token) {
-      fetch(`${config.apiBase}/api/tmux/panes/${encodeURIComponent(CurrentPaneId)}`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-      })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
+      apiService.getPane(CurrentPaneId)
+        .then(({ data }) => {
           if (data?.config) {
             try {
-              const config = JSON.parse(data.config);
-              setPreviewUrls(config.previewUrls || []);
+              const cfg = JSON.parse(data.config);
+              setPreviewUrls(cfg.previewUrls || []);
             } catch (e) {
               console.error('Failed to parse config:', e);
             }
@@ -510,11 +485,7 @@ const App: React.FC = () => {
     voiceTranscriptRef.current = '';
     if (!text) return;
     try {
-      await fetch(getApiUrl('/api/tmux'), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, target: displayPaneId })
-      });
+      await apiService.sendCommand(displayPaneId, text);
     } catch (e) {
       console.error('Failed to send voice command:', e);
     }
@@ -573,8 +544,7 @@ const App: React.FC = () => {
           const fd = new FormData();
           fd.append('file', blob, 'voice.webm');
           fd.append('engine', 'google');
-          const r = await fetch(urls.stt(), { method: 'POST', body: fd });
-          const d = await r.json();
+          const { data: d } = await apiService.stt(fd);
           if (d.text) {
             voiceTranscriptRef.current = d.text;
             sendVoiceTranscript();
@@ -602,15 +572,8 @@ const App: React.FC = () => {
     setIsCapturing(true);
     const targetPane = pane_id || displayPaneId;
     try {
-      const res = await fetch(`${config.apiBase}/api/tmux/capture_pane`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ pane_id: targetPane, lines: lines || 100 })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCaptureOutput(data.output || '');
-      }
+      const { data } = await apiService.capturePane(targetPane);
+      setCaptureOutput(data.output || '');
     } catch (e) { console.error(e); }
     finally { setIsCapturing(false); }
   };
@@ -621,19 +584,12 @@ const App: React.FC = () => {
     setIsRestarting(true);
     try {
       const paneIdClean = targetPane.replace(':main.0', '');
-      await fetch(`${config.apiBase}/api/tmux/panes/${encodeURIComponent(paneIdClean)}/restart`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-      });
+      await apiService.restartPane(paneIdClean);
       for (let i = 0; i < 30; i++) {
         await new Promise(r => setTimeout(r, 1000));
         try {
-          const res = await fetch(`${config.apiBase}/api/ttyd/status/${encodeURIComponent(paneIdClean)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.status === 'running') {
+          const { data } = await apiService.getTtydStatus(paneIdClean);
+          if (data.status === 'running') {
               setTimeout(() => location.reload(), 500);
               return;
             }
@@ -685,13 +641,8 @@ const App: React.FC = () => {
     try {
       // Add :main.0 suffix if not present
       const paneIdToSave = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
-      const res = await fetch(`${config.apiBase}/api/ttyd/config/${encodeURIComponent(paneIdToSave)}`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataToSave),
-      });
-      if (res.ok) {
-        setPaneTitle(dataToSave.title || CurrentPaneId);
+      await apiService.updateTtydConfig(paneIdToSave, dataToSave);
+      setPaneTitle(dataToSave.title || CurrentPaneId);
         setPaneWorkspace(dataToSave.workspace || '/home/w3c_offical');
         setPaneAgentDuty(dataToSave.agent_duty || '');
         setPaneAgentType(dataToSave.agent_type || '');
@@ -712,7 +663,6 @@ const App: React.FC = () => {
         
         document.title = dataToSave.title || CurrentPaneId;
         setTempPaneData(null);
-      }
     } catch (e) { console.error('Failed to save pane:', e); }
     finally { setIsSavingPane(false); }
   };
@@ -888,20 +838,12 @@ const App: React.FC = () => {
                     onNewAgent={async () => {
                       if (!confirm('Create a new agent?')) return;
                       try {
-                        const res = await fetch(getApiUrl('/api/tmux/create'), {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                          },
-                          body: JSON.stringify({
+                        const { data } = await apiService.createPane({
                             win_name: `Agent-${Date.now()}`,
                             workspace: '',
                             init_script: 'pwd'
-                          })
-                        });
-                        const data = await res.json();
-                        if (res.ok && data.pane_id) {
+                          });
+                        if (data.pane_id) {
                           alert(`Created: ${data.pane_id}`);
                         } else {
                           alert(`Failed: ${data.detail || 'Unknown error'}`);
@@ -939,14 +881,7 @@ const App: React.FC = () => {
                   setIsSavingPane(true);
                   try {
                     const { target, ...dataToSave } = tempPaneData;
-                    await fetch(getApiUrl(`/api/tmux/panes/${target}`), {
-                      method: 'PATCH',
-                      headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify(dataToSave)
-                    });
+                    await apiService.updatePane(target, dataToSave);
                     
                     // Update paneDetail immediately
                     if (api) {
@@ -1087,7 +1022,7 @@ const App: React.FC = () => {
                         type="button" 
                         onClick={async () => {
                           const paneId = displayPaneId.replace(':main.0', '');
-                          await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/choose-session`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                          await apiService.chooseSession(paneId);
                           setShowMoreMenu(false);
                         }} 
                         className="w-full px-3 py-2 text-left text-xs text-vsc-text hover:bg-vsc-bg-hover"
@@ -1098,7 +1033,7 @@ const App: React.FC = () => {
                         type="button" 
                         onClick={async () => {
                           const paneId = displayPaneId.replace(':main.0', '');
-                          await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=v`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                          await apiService.splitPane(paneId, 'v');
                           setShowMoreMenu(false);
                         }} 
                         className="w-full px-3 py-2 text-left text-xs text-vsc-text hover:bg-vsc-bg-hover flex items-center gap-2"
@@ -1109,7 +1044,7 @@ const App: React.FC = () => {
                         type="button" 
                         onClick={async () => {
                           const paneId = displayPaneId.replace(':main.0', '');
-                          await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/split?direction=h`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                          await apiService.splitPane(paneId, 'h');
                           setShowMoreMenu(false);
                         }} 
                         className="w-full px-3 py-2 text-left text-xs text-vsc-text hover:bg-vsc-bg-hover flex items-center gap-2"
@@ -1120,7 +1055,7 @@ const App: React.FC = () => {
                         type="button" 
                         onClick={async () => {
                           const paneId = displayPaneId.replace(':main.0', '');
-                          await fetch(getApiUrl(`/api/tmux/panes/${encodeURIComponent(paneId)}/unsplit`), { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                          await apiService.unsplitPane(paneId);
                           setShowMoreMenu(false);
                         }} 
                         className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-vsc-bg-hover flex items-center gap-2"
@@ -1592,10 +1527,7 @@ const App: React.FC = () => {
         <ConfirmDialog
           message={`Remove agent ${displayPaneId}? This will delete the pane.`}
           onConfirm={async () => {
-            await fetch(getApiUrl(`/api/agents/${encodeURIComponent(displayPaneId)}`), {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await apiService.deleteAgent(displayPaneId);
             const otherPane = allPanes.find(p => p.pane_id !== displayPaneId);
             if (otherPane) {
               selectPane(otherPane.pane_id);

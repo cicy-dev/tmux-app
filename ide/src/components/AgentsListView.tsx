@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Plus } from 'lucide-react';
-import { getApiUrl } from '../services/apiUrl';
+import apiService from '../services/api';
 import { urls } from '../config';
 import { WebFrame } from './WebFrame';
 
@@ -48,19 +48,13 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
   const fetchAgents = async () => {
     setLoading(true);
     try {
-      const res = await fetch(getApiUrl(`/api/agents/pane/${paneId}`), {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const { data } = await apiService.getAgentsByPane(paneId);
+      const agentsWithTitles = data.map((agent: Agent) => {
+        const agentInfo = allAgents.find(a => a.pane_id === agent.name);
+        return { ...agent, title: agentInfo?.title || agent.name };
       });
-      if (res.ok) {
-        const data = await res.json();
-        // Fetch titles from allAgents
-        const agentsWithTitles = data.map((agent: Agent) => {
-          const agentInfo = allAgents.find(a => a.pane_id === agent.name);
-          return { ...agent, title: agentInfo?.title || agent.name };
-        });
-        setAgents(agentsWithTitles);
-        onAgentsChange?.(data.map((a: Agent) => a.name));
-      }
+      setAgents(agentsWithTitles);
+      onAgentsChange?.(data.map((a: Agent) => a.name));
     } catch (err) {
       console.error('Failed to fetch agents:', err);
     } finally {
@@ -70,13 +64,8 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
 
   const fetchAllAgents = async () => {
     try {
-      const res = await fetch(getApiUrl('/api/tmux/status/all'), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAllAgents(data || []);
-      }
+      const { data } = await apiService.getAllStatus();
+      setAllAgents(data || []);
     } catch (err) {
       console.error('Failed to fetch all agents:', err);
     }
@@ -85,22 +74,9 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
   const handleAddAgent = async () => {
     if (!selectedAgent) return;
     try {
-      const res = await fetch(getApiUrl('/api/agents/bind'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ pane_id: paneId, agent_name: selectedAgent })
-      });
-      if (res.ok) {
-        fetchAgents();
-        setSelectedAgent('');
-      } else {
-        const error = await res.json();
-        console.error('Failed to add agent:', error);
-        alert(`Failed to add agent: ${error.detail || 'Unknown error'}`);
-      }
+      await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent });
+      fetchAgents();
+      setSelectedAgent('');
     } catch (err) {
       console.error('Failed to add agent:', err);
       alert(`Error: ${err}`);
@@ -109,13 +85,8 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
 
   const handleRemoveAgent = async (agentId: number) => {
     try {
-      const res = await fetch(getApiUrl(`/api/agents/unbind/${agentId}`), {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchAgents();
-      }
+      await apiService.unbindAgent(agentId);
+      fetchAgents();
     } catch (err) {
       console.error('Failed to remove agent:', err);
     }
@@ -204,28 +175,13 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
         <button
           onClick={async () => {
             try {
-              const res = await fetch(getApiUrl('/api/tmux/create'), {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  win_name: `SubAgent(${paneId})`,
-                  workspace: '',
-                  init_script: 'pwd'
-                })
+              const { data } = await apiService.createPane({
+                win_name: `SubAgent(${paneId})`,
+                workspace: '',
+                init_script: 'pwd'
               });
-              const data = await res.json();
-              if (res.ok && data.pane_id) {
-                await fetch(getApiUrl('/api/agents/bind'), {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ pane_id: paneId, agent_name: data.pane_id })
-                });
+              if (data.pane_id) {
+                await apiService.bindAgent({ pane_id: paneId, agent_name: data.pane_id });
                 fetchAgents();
                 fetchAllAgents();
               } else {

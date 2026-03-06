@@ -4,7 +4,7 @@ import { FloatingPanel } from './FloatingPanel';
 import { TerminalControls } from './TerminalControls';
 import { Position, Size } from '../types';
 import { sendCommandToTmux } from '../services/mockApi';
-import { getApiUrl } from '../services/apiUrl';
+import apiService from '../services/api';
 
 const style = document.createElement('style');
 style.textContent = `
@@ -118,10 +118,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   useEffect(() => {
     const mode = paneModes[selectedPane] || mouseMode;
     if (mode !== mouseMode && onToggleMouse) {
-      fetch(getApiUrl(`/api/tmux/mouse/${mode}?pane_id=${encodeURIComponent(selectedPane)}`), {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-      });
+      apiService.toggleMouse(mode, selectedPane);
     }
   }, [selectedPane]);
 
@@ -226,12 +223,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
       saveDraft('');
       setIsCorrectingEnglish(true); if (onCorrectionLoading) onCorrectionLoading(true);
       try {
-        const res = await fetch(getApiUrl('/api/correctEnglish'), {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cmd })
-        });
-        const data = await res.json();
+        const { data } = await apiService.correctEnglish(cmd);
         console.log('[correctEnglish] Response:', data);
         if (data.success && data.result && Array.isArray(data.result) && data.result.length > 0) {
           setCorrectedResult(data.result);
@@ -288,12 +280,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     setIsCorrectingEnglish(true); if (onCorrectionLoading) onCorrectionLoading(true);
     setCorrectedResult(null);
     try {
-      const res = await fetch(getApiUrl('/api/correctEnglish'), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: promptText })
-      });
-      const data = await res.json();
+      const { data } = await apiService.correctEnglish(promptText);
       console.log('Correct English result:', data);
       if (data.success && data.result && Array.isArray(data.result)) {
         // result is [English, Chinese]
@@ -388,7 +375,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               if (!v) return;
               e.target.value = '';
               if (['Left', 'Down', 'Up', 'Right'].includes(v)) {
-                await fetch(getApiUrl('/api/tmux/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: paneTarget, keys: v }) });
+                await apiService.sendCommand(paneTarget, v);
               } else {
                 await sendCommandToTmux(v, paneTarget);
               }
@@ -503,13 +490,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                     saveDraft('');
                     console.log('Setting loading true');
                     setIsCorrectingEnglish(true); if (onCorrectionLoading) onCorrectionLoading(true);
-                    fetch(getApiUrl('/api/correctEnglish'), {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ text: cmd })
-                    })
-                      .then(res => res.json())
-                      .then(data => {
+                    apiService.correctEnglish(cmd)
+                      .then(({ data }) => {
                         if (data.success && data.result && Array.isArray(data.result)) {
                           setCorrectedResult(data.result);
                           if (onShowCorrection) {
@@ -541,10 +523,10 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                       "right": "Right",
                       "space": "Space",
                   }
-                  await fetch(getApiUrl('/api/tmux/send-keys'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: selectedPane, keys: key_map[e.key.toLowerCase()] }) });
+                  await apiService.sendKeys(selectedPane, key_map[e.key.toLowerCase()]);
                 } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !promptText) {
                   e.preventDefault();
-                  await fetch(getApiUrl('/api/tmux/send-keys'), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ win_id: selectedPane, keys: "C-c" }) });
+                  await apiService.sendKeys(selectedPane, "C-c");
                 } else  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                   if (e.shiftKey) {
                     // Shift+Enter = newline (default behavior)

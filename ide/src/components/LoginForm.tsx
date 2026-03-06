@@ -1,6 +1,6 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
-import { getApiUrl } from '../services/apiUrl';
+import apiService from '../services/api';
 
 interface LoginFormProps {
   onLogin: (token: string) => void;
@@ -15,19 +15,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     if (!tokenValue) return;
 
     try {
-      const res = await fetch(getApiUrl('/api/auth/verify'), {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${tokenValue}`, 'Accept': 'application/json' }
-      });
-
-      if (res.ok) {
-        localStorage.setItem('token', tokenValue);
-        onLogin(tokenValue);
-      } else {
-        alert('Invalid token');
-      }
+      localStorage.setItem('token', tokenValue);
+      await apiService.verifyAuth(tokenValue);
+      onLogin(tokenValue);
     } catch (err) {
-      alert('Connection failed');
+      localStorage.removeItem('token');
+      alert('Invalid token or connection failed');
     }
   };
 
