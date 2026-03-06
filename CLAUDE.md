@@ -1,128 +1,79 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for AI agents working on this codebase.
 
-## Project Overview
+## Project
 
-**tmux-app** is a browser-based terminal management interface that proxies tmux panes via ttyd (WebSocket terminal) with React frontends and token-based authentication. There are two nearly identical frontend apps (`frontend/` and `ide/`) that differ primarily in mode and minor initialization logic.
+Browser-based IDE for managing AI agents in tmux sessions. React 19 + TypeScript + Vite + Tailwind CSS.
 
-## Build & Run Commands
+## Build & Test
 
-### Docker (primary development method)
 ```bash
-docker compose up --build          # Start both apps with hot reload
-docker compose down                # Stop
-docker compose logs -f frontend    # View frontend logs
-docker compose logs -f ide         # View ide logs
+cd ide && npx vite build 2>&1 | tail -10   # Build (must pass before commit)
+cd ide && npx vite dev                       # Dev server with HMR
 ```
 
-### Frontend (local, without Docker)
-```bash
-cd frontend && npm run dev         # Vite dev server on 0.0.0.0:6902
-cd frontend && npm run build       # Type-check (tsc) + Vite build
-```
+No test framework — verify via build success + manual browser testing.
 
-### IDE app
-Same commands as frontend but in `ide/` directory. Docker maps ide to port 6903 externally.
-
-### Testing
-```bash
-# Single test
-bash tests/curl/test_health.sh
-bash tests/e2e/test_login.sh
-
-# All curl API tests
-for f in tests/curl/test_*.sh; do bash "$f"; done
-
-# All E2E browser tests (requires electron-mcp running)
-for f in tests/e2e/test_*.sh; do bash "$f"; done
-
-# Full test suite (pre-commit)
-bash run_tests.sh
-```
-
-Tests use bash scripts with curl (API tests against server port 6901) and curl-rpc + electron-mcp (E2E browser tests). No jest/vitest — all tests are shell scripts with PASS/FAIL counters.
-
-**Token for tests** (never hardcode):
-```bash
-TOKEN=$(python3 -c "import json; print(json.load(open('/home/w3c_offical/global.json'))['api_token'])")
-```
-
-## Architecture
-
-### Service Topology
-```
-Frontend (React, port 6902)  ──→  FastAPI Backend (Python, port 14444)
-IDE (React, port 6903)       ──→  FastAPI Backend
-                                     │
-Frontend/IDE ──→ ttyd-proxy (Node.js, port 6901) ──→ ttyd processes ──→ tmux
-```
-
-- **FastAPI** (external, port 14444): All business APIs — tmux, ttyd, groups, auth, agents, MySQL persistence
-- **ttyd-proxy server** (external, Node.js, port 6901): HTTP + WebSocket proxy for ttyd, pane cache, token translation
-- **frontend** and **ide**: Pure client-side React apps, no server-side rendering
-
-### External API Endpoints (hardcoded in `services/apiUrl.ts`)
-| Constant | URL | Purpose |
-|----------|-----|---------|
-| `API_BASE` | `https://g-fast-api.cicy.de5.net` | FastAPI backend |
-| `TTYD_BASE` | `https://ttyd-proxy.cicy.de5.net` | ttyd WebSocket proxy |
-| `TTYD_WEB_BASE` | `https://ttyd-dev.cicy.de5.net` | Alternative ttyd web access |
-
-### Authentication Flow
-1. Token checked from `localStorage.getItem('token')`
-2. No token → `LoginForm` shown
-3. Login verifies via `GET /api/auth/verify` with `Authorization: Bearer {token}`
-4. All API calls carry this Bearer token header
-
-### Key Frontend Entry Points
-- `main.tsx` → `Router.tsx` → `SinglePaneApp.tsx` (main app component, ~700-900 lines)
-- `services/apiUrl.ts`: All API URL constants, path builders, `getApiUrl()`, `apiFetch()`
-- `services/mockApi.ts`: `sendCommandToTmux()`, `sendShortcut()` wrappers
-- `types.ts`: `AppSettings`, `Position`, `Size` interfaces
-
-### SinglePaneApp Tabs
-Code (code server iframe), Services (Electron/MySQL/Monitor/VNC), Docs, Preview, Agents (agent binding/management), Settings
-
-## Code Conventions
-
-### Naming
-| Type | Convention | Example |
-|------|-----------|---------|
-| Files | kebab-case | `command-panel.tsx` |
-| Components | PascalCase | `CommandPanel` |
-| Interfaces/Types | PascalCase | `AppSettings` |
-| Functions/Variables | camelCase | `handleLogin` |
-| Constants | UPPER_SNAKE_CASE | `DEFAULT_SETTINGS` |
-
-### Import Order
-1. React core → 2. External libraries → 3. Local components → 4. Local services/utils → 5. Types/constants
-
-### Component Patterns
-- Function components + Hooks only; `forwardRef` for ref forwarding
-- Props defined as TypeScript interfaces
-- Components in `.tsx`, types in `.ts`
-- Tailwind CSS only (no inline styles)
-- TypeScript strict mode: `noUnusedLocals`, `noUnusedParameters` enabled
-
-## TDD Workflow (Mandatory)
+## Entry Flow
 
 ```
-RED → GREEN → REFACTOR → TEST PASS → COMMIT
+main.tsx → Router.tsx → MainApp.tsx
+  AppProvider → PaneProvider → VoiceProvider → DialogProvider
+    ├── LeftSidePanel      (agent list, search, pin)
+    ├── MainMiddlePanel    (terminal, command panel, capture)
+    └── RightSidePanel     (code, prompt, agents, preview, settings)
 ```
 
-- Server changes → write curl test in `tests/curl/test_<feature>.sh` first
-- Frontend changes → write E2E test in `tests/e2e/test_<feature>.sh` first
-- Run `bash run_tests.sh` before committing
+## Key Files
 
-## Prohibited Actions
+| File | Lines | Purpose |
+|------|-------|---------|
+| `MainApp.tsx` | 142 | Root layout, drag handle, auth gates |
+| `contexts/AppContext.tsx` | 272 | Auth, panes list, pane detail, API |
+| `contexts/PaneContext.tsx` | 322 | Current pane state, UI, operations |
+| `components/CommandPanel.tsx` | 624 | Prompt input, history, correction |
+| `components/RightSidePanel.tsx` | 618 | All right-side tabs |
+| `components/MainMiddlePanel.tsx` | 337 | Terminal area, topbar, overlays |
+| `components/LeftSidePanel.tsx` | 126 | Agent list sidebar |
+| `services/api.ts` | 69 | All API endpoints (axios) |
+| `config.ts` | 23 | URL constants and builders |
 
-- Do NOT commit without running tests
-- Do NOT skip pre-commit hook (`--no-verify`)
-- Do NOT hardcode tokens in test scripts (read from `global.json`)
-- Do NOT add business API logic to the Node.js server — all business logic goes to FastAPI
-- Do NOT add npm packages without rebuilding Docker containers (`docker compose up --build`)
+## Code Rules
 
-## Commit Message Convention
+- **All API calls** through `services/api.ts` axios singleton — no direct fetch()
+- **State management** via React Context only — no Redux/Zustand
+- **Persistence** via localStorage — panel widths, history, drafts, pins, heights
+- **Styling** with Tailwind CSS classes — inline styles only for dynamic values
+- **Components** as function components + hooks — no class components
+- **`text` vs `keys`** — `api.sendCommand()` sends `{text}` (auto Enter), `api.sendKeys()` sends `{keys}` (raw)
 
-Prefixes: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
+## API Base URLs (config.ts)
+
+```
+FastAPI:     https://g-fast-api.cicy.de5.net
+ttyd Proxy:  https://ttyd-proxy.cicy.de5.net
+code-server: https://code.cicy.de5.net
+```
+
+## Common Patterns
+
+### Adding a new API endpoint
+1. Add to `services/api.ts`
+2. Call via `apiService.methodName()` or `api.methodName()` from AppContext
+
+### Adding a right-side tab
+1. Add tab name to the array in `RightSidePanel.tsx` top bar
+2. Add `{activeTab === 'Name' && <Component />}` in the render
+
+### Adding a Settings sub-tab
+1. Add to the `sub` type union in `SettingsTabWithSub`
+2. Add button in vertical nav
+3. Add `{sub === 'Name' && <Content />}` in content area
+
+### Drag/resize with iframes
+Always add a global overlay (`fixed inset-0 z-[9999]`) during drag to prevent iframe event stealing. Use delta-based calculation: `startValue + (currentMouse - startMouse)`.
+
+## Commit Convention
+
+Prefixes: `feat:`, `fix:`, `docs:`, `refactor:`, `cleanup:`
