@@ -23,10 +23,10 @@ const api = {
   deletePane:       (id: string)                           => http.delete(`/api/tmux/panes/${encodeURIComponent(id)}`),
   createPane:       (data: any)                            => http.post('/api/tmux/create', data),
   restartPane:      (id: string)                           => http.post(`/api/tmux/panes/${encodeURIComponent(id)}/restart`),
-  capturePane:      (id: string)                           => http.get('/api/tmux/capture_pane', { params: { pane_id: id } }),
+  capturePane:      (id: string, lines?: number)            => http.post('/api/tmux/capture_pane', { pane_id: id, lines: lines || 100 }),
 
   // Tmux operations
-  sendCommand:      (winId: string, keys: string)          => http.post('/api/tmux/send', { win_id: winId, keys }),
+  sendCommand:      (winId: string, text: string)          => http.post('/api/tmux/send', { win_id: winId, text }),
   sendKeys:         (winId: string, keys: string)          => http.post('/api/tmux/send-keys', { win_id: winId, keys }),
   toggleMouse:      (mode: string, paneId: string)         => http.post(`/api/tmux/mouse/${mode}`, null, { params: { pane_id: paneId } }),
   chooseSession:    (id: string)                           => http.post(`/api/tmux/panes/${encodeURIComponent(id)}/choose-session`),

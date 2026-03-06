@@ -75,7 +75,7 @@ const App: React.FC = () => {
       <div id="main" className="fixed inset-0">
         {!leftCollapsed && (
           <div id="left-side" className="absolute inset-y-0 left-0 bg-vsc-bg-secondary border-r border-vsc-border z-10" style={{width: leftW}}>
-            <LeftSidePanel onCollapse={() => setLeftCollapsed(true)} />
+            <LeftSidePanel />
           </div>
         )}
 

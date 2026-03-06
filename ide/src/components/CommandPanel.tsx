@@ -344,17 +344,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
             >
               <History size={14} />
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                // Trigger common prompt panel from parent
-                window.dispatchEvent(new CustomEvent('show-common-prompt'));
-              }}
-              className="p-1.5 rounded transition-colors text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
-              title="Common prompt"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            </button>
           </>
         }
         initialPosition={panelPosition}
@@ -379,7 +368,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               if (!v) return;
               e.target.value = '';
               if (['Left', 'Down', 'Up', 'Right'].includes(v)) {
-                await apiService.sendCommand(paneTarget, v);
+                await apiService.sendKeys(paneTarget, v);
               } else {
                 await sendCommandToTmux(v, paneTarget);
               }
@@ -511,21 +500,14 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
 
   
                if ((
-                  e.key === 'Escape'|| e.key === 'Backspace' || e.key === 'Enter'
+                  e.key === 'Escape'|| e.key === 'Backspace'
                 ) && !promptText) {
                   e.preventDefault();
 
-                  const key_map = {
+                  const key_map: Record<string, string> = {
                       "backspace": "BSpace",
-                      "enter": "Enter",
                       "escape": "Escape",
                       "esc": "Escape",
-                      "tab": "Tab",
-                      "up": "Up",
-                      "down": "Down",
-                      "left": "Left",
-                      "right": "Right",
-                      "space": "Space",
                   }
                   await apiService.sendKeys(selectedPane, key_map[e.key.toLowerCase()]);
                 } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !promptText) {
@@ -561,6 +543,10 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                           .then(() => { setSendSuccess(true); setTimeout(() => setSendSuccess(false), 2000); })
                           .catch(console.error)
                           .finally(() => { setIsSending(false); setTimeout(() => textareaRef.current?.focus(), 50); });
+                      } else {
+                        // Empty prompt, no correction result → send Enter to tmux
+                        setPromptText('');
+                        await apiService.sendKeys(selectedPane, "Enter");
                       }
                     }
                   }

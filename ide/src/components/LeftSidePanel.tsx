@@ -11,11 +11,25 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   compacting: { color: 'bg-purple-500 animate-pulse', label: 'compact' },
 };
 
-const LeftSidePanel: React.FC<{onCollapse?: () => void}> = ({onCollapse}) => {
+const LeftSidePanel: React.FC = () => {
   const { allPanes, currentPaneId, selectPane, paneDetail } = useApp();
   const { openDialog, closeDialog, activeDialog } = useDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const [newTitle, setNewTitle] = useState('');
+  const [pinnedPanes, setPinnedPanes] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pinnedPanes');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Listen for pin changes from topbar
+  React.useEffect(() => {
+    const handler = () => {
+      const saved = localStorage.getItem('pinnedPanes');
+      setPinnedPanes(saved ? JSON.parse(saved) : []);
+    };
+    window.addEventListener('pinnedPanesChanged', handler);
+    return () => window.removeEventListener('pinnedPanesChanged', handler);
+  }, []);
 
   const getStatusInfo = (pane: any) => {
     if (pane.isThinking) return statusConfig.thinking;
@@ -43,7 +57,11 @@ const LeftSidePanel: React.FC<{onCollapse?: () => void}> = ({onCollapse}) => {
   const filtered = allPanes.filter((p: any) =>
     (p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
      p.pane_id?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  ).sort((a: any, b: any) => {
+    const ap = pinnedPanes.includes(a.pane_id) ? 0 : 1;
+    const bp = pinnedPanes.includes(b.pane_id) ? 0 : 1;
+    return ap - bp;
+  });
 
   return (
     <div className="h-full flex flex-col bg-vsc-bg-secondary">
@@ -53,11 +71,6 @@ const LeftSidePanel: React.FC<{onCollapse?: () => void}> = ({onCollapse}) => {
           <button onClick={() => openDialog('createAgent')} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover" title="New agent">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
-          {onCollapse && (
-            <button onClick={onCollapse} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover" title="Collapse">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
-            </button>
-          )}
         </div>
       </div>
 
@@ -77,7 +90,10 @@ const LeftSidePanel: React.FC<{onCollapse?: () => void}> = ({onCollapse}) => {
               className={`group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 transition-colors ${isActive ? 'bg-vsc-bg-active border-l-blue-500' : 'border-l-transparent hover:bg-vsc-bg-hover'}`}>
               <div className={`w-2 h-2 rounded-full flex-shrink-0 ${si.color}`} title={si.label} />
               <div className="flex-1 min-w-0">
-                <span className={`text-sm truncate block ${isActive ? 'text-vsc-text font-medium' : 'text-vsc-text-secondary'}`}>{title}</span>
+                <div className="flex items-center gap-1">
+                  {pinnedPanes.includes(pane.pane_id) && <span className="text-yellow-500 text-[10px]">📌</span>}
+                  <span className={`text-sm truncate block ${isActive ? 'text-vsc-text font-medium' : 'text-vsc-text-secondary'}`}>{title}</span>
+                </div>
                 <div className="flex items-center gap-2 text-[11px] text-vsc-text-secondary">
                   <span>{shortId}</span>
                   {si.label && <span className={`${si.color.replace('animate-pulse', '')} bg-opacity-20 px-1 rounded`}>{si.label}</span>}

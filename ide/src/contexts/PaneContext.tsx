@@ -263,11 +263,11 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsTogglingMouse(false);
   }, [isTogglingMouse, mouseMode, displayPaneId]);
 
-  const handleCapturePane = useCallback(async (paneId?: string) => {
+  const handleCapturePane = useCallback(async (paneId?: string, lines?: number) => {
     if (isCapturing) return;
     setIsCapturing(true);
     try {
-      const { data } = await apiService.capturePane(paneId || displayPaneId);
+      const { data } = await apiService.capturePane(paneId || displayPaneId, lines);
       setCaptureOutput(data.output || '');
     } catch (e) { console.error(e); }
     finally { setIsCapturing(false); }
