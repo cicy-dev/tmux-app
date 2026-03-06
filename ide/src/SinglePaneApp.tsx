@@ -9,35 +9,16 @@ import { SettingsView } from './components/SettingsView';
 import { AgentsListView } from './components/AgentsListView';
 import { AgentsRightView } from './components/AgentsRightView';
 import { CaptureDialog } from './components/CaptureDialog';
-import { ConfirmDialog } from './components/ConfirmDialog';
 import config, { urls } from './config';
 import apiService from './services/api';
-import { TokenManager } from './services/tokenManager';
 import { AppSettings, Position, Size } from './types';
 import { WebFrame } from './components/WebFrame';
 import { useApp } from './contexts/AppContext';
 import { useDialog } from './contexts/DialogContext';
+import { usePane } from './contexts/PaneContext';
 
-// Read URL query params
-const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4])
-
-console.log({CurrentPaneId})
-// const CurrentPaneId = new URLSearchParams(window.location.search).get('bot_name') || '';
+const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
 const TMUX_TARGET = `${CurrentPaneId}`;
-
-const DEFAULT_SETTINGS: AppSettings = {
-  panelPosition: { x: Math.max(20, window.innerWidth - 380), y: Math.max(60, window.innerHeight - 240) },
-  panelSize: { width: 360, height: 220 },
-  forwardEvents: true,
-  lastDraft: '',
-  showPrompt: true,
-  showVoiceControl: false,
-  voiceButtonPosition: { x: 40, y: 36 },
-  commandHistory: [],
-  agent_duty: ''
-};
-
-const STORAGE_KEY = `ttyd_app_settings_v1_${CurrentPaneId}`;
 
 declare global {
   interface Window {
@@ -49,13 +30,20 @@ declare global {
 const App: React.FC = () => {
   const { currentPaneId, allPanes, currentPane, paneDetail, api, setPaneDetail, updatePane, selectPane, globalVar, loadGlobalVar, updateGlobalVar } = useApp();
   const { openDialog, closeDialog, confirm: confirmDialog, activeDialog } = useDialog();
+  const {
+    displayPaneId, displayPaneTitle, token, setToken, userPerms, isCheckingAuth, hasPermission,
+    ttydWidth, setTtydWidth, isDragging, setIsDragging, isInteracting, setIsInteracting, commandPanelHeight,
+    activeTab, setActiveTab, agentsSubTab, setAgentsSubTab, previewTab, setPreviewTab,
+    agentStatus, contextUsage, mouseMode, readOnly, setReadOnly, isRestarting,
+    agentTabs, setAgentTabs, activeAgentTab, setActiveAgentTab,
+    visitedPanes, settings, setSettings, isLoaded,
+    networkLatency, networkStatus, toast, setToast,
+    handleRestart, handleCapturePane, handleToggleMouse, handlePanelChange,
+    captureOutput, setCaptureOutput, isCapturing,
+  } = usePane();
   const MODE = "ttyd";
 
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [userPerms, setUserPerms] = useState<string[]>([]);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  // Local-only state (not shared with other components)
   const [paneTitle, setPaneTitle] = useState<string>('');
   const [paneWorkspace, setPaneWorkspace] = useState<string>('/home/w3c_offical');
   const [paneAgentDuty, setPaneAgentDuty] = useState<string>('');
@@ -67,27 +55,6 @@ const App: React.FC = () => {
   const [paneTgChatId, setPaneTgChatId] = useState<string>('');
   const [paneTgEnable, setPaneTgEnable] = useState<boolean>(false);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [readOnly, setReadOnly] = useState(true);
-  const [isRestarting, setIsRestarting] = useState(false);
-  const [captureOutput, setCaptureOutput] = useState<string | null>(null);
-  const [agentStatus, setAgentStatus] = useState('idle');
-  const [contextUsage, setContextUsage] = useState<number | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [ttydWidth, setTtydWidth] = useState(() => {
-    const saved = localStorage.getItem(`${CurrentPaneId}_ttydWidth`);
-    return saved ? parseInt(saved) : 360;
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const [commandPanelHeight] = useState(220);
-  const [activeTab, setActiveTab] = useState<'Code' | 'Services' | 'Docs' | 'Preview' | 'Agents' | 'Settings'>(() => {
-    const saved = localStorage.getItem(`${CurrentPaneId}_activeTab`);
-    return (saved as any) || 'Code';
-  });
-  const [agentsSubTab, setAgentsSubTab] = useState<'All' | 'Binded'>('All');
-  const [previewTab, setPreviewTab] = useState<number>(() => {
-    const saved = localStorage.getItem(`${CurrentPaneId}_previewTab`);
-    return saved ? parseInt(saved) : 0;
-  });
   const [boundAgents, setBoundAgents] = useState<string[]>([]);
   const [pinnedPanes, setPinnedPanes] = useState<string[]>(() => {
     const saved = localStorage.getItem('pinnedPanes');
@@ -100,41 +67,15 @@ const App: React.FC = () => {
   const [showCorrectionResult, setShowCorrectionResult] = useState(false);
   const [correctionData, setCorrectionData] = useState<[string, string] | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [isInteracting, setIsInteracting] = useState(false);
   const [editingPane, setEditingPane] = useState<EditPaneData | null>(null);
   const [isSavingPane, setIsSavingPane] = useState(false);
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
-  const [agentTabs, setAgentTabs] = useState<Array<{paneId: string, title:string,url: string, closable: boolean}>>([]);
-
-  const [networkLatency, setNetworkLatency] = useState<number | null>(null);
-  const [networkStatus, setNetworkStatus] = useState<'excellent' | 'good' | 'poor' | 'offline'>('good');
-  const [toast, setToast] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const voiceModeRef = useRef<'append' | 'direct'>('append');
   const voiceTranscriptRef = useRef<string>('');
   const commandPanelRef = useRef<CommandPanelHandle>(null);
   const mainIframeRef = useRef<HTMLIFrameElement>(null);
-
-  const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
-  const [visitedPanes, setVisitedPanes] = useState<string[]>([]);
-
-  // Use Context values directly
-  const displayPaneId = currentPaneId || CurrentPaneId;
-  const displayPaneTitle = paneDetail?.title || currentPane?.title || displayPaneId || 'No pane selected';
-
-  const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
-
-  // Add displayPaneId to visitedPanes when it changes
-  useEffect(() => {
-    if (displayPaneId && displayPaneId !== '' && displayPaneId !== 'undefined') {
-      setVisitedPanes(prev => {
-        if (prev.includes(displayPaneId)) return prev;
-        const cleaned = prev.filter(id => id && id !== '' && id !== 'undefined');
-        return [...cleaned, displayPaneId];
-      });
-    }
-  }, [displayPaneId]);
 
   const navigateToPath = async (path: string, forceRefresh = false) => {
     console.log('navigateToPath called:', path, 'forceRefresh:', forceRefresh);
@@ -228,140 +169,44 @@ const App: React.FC = () => {
     return () => window.removeEventListener('show-common-prompt', handleShowCommonPrompt as EventListener);
   }, [showCommonPromptOverlay, paneDetail]);
 
-  const [isTogglingMouse, setIsTogglingMouse] = useState(false);
-
-    const handleToggleMouse = async () => {
-      if (isTogglingMouse) return;
-      setIsTogglingMouse(true);
-      const newMode = mouseMode === 'on' ? 'off' : 'on';
-      try {
-        await apiService.toggleMouse(newMode, displayPaneId);
-        setMouseMode(newMode);
-      } catch {}
-      setIsTogglingMouse(false);
-    };
-  
-  // --- Initialization ---
+  // --- Initialization: load pane config ---
   useEffect(() => {
-    const init = async () => {
-      const urlToken = new URLSearchParams(window.location.search).get('token');
-      if (urlToken) {
-        TokenManager.saveToken(urlToken);
-        setToken(urlToken);
-        setIsCheckingAuth(false);
-
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
+    if (!token) return;
+    const loadPaneConfig = async () => {
+      try {
+        const paneIdToLoad = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
+        const { data } = await apiService.getTtydConfig(paneIdToLoad);
+        if (data) {
+          const title = data.title || CurrentPaneId;
+          setPaneTitle(title);
+          setPaneWorkspace(data.workspace || '/home/w3c_offical');
+          setPaneAgentDuty(data.agent_duty || '');
+          setPaneAgentType(data.agent_type || '');
+          setPaneInitScript(data.init_script || '');
+          setPaneTgToken(data.tg_token || '');
+          setPaneTgChatId(data.tg_chat_id || '');
+          setPaneTtydPreview(data.ttyd_preview || '');
+          setPaneTgEnable(data.tg_enable || false);
+          let cfg: any = {};
+          try { cfg = data.config ? JSON.parse(data.config) : {}; } catch {}
+          setPaneConfig(data.config || '{}');
+          setPreviewUrls(cfg.previewUrls || []);
+          document.title = title;
           try {
-            const parsed = JSON.parse(saved);
-            if (!parsed.commandHistory) parsed.commandHistory = [];
-            if (parsed.showVoiceControl && MODE !== 'ttyd') parsed.showPrompt = false;
-            setSettings({ ...DEFAULT_SETTINGS, ...parsed });
-          } catch (e) { console.error('Failed to parse settings', e); }
+            const { data: agents } = await apiService.getAgentsByPane(CurrentPaneId);
+            setBoundAgents(agents.map((a: any) => a.name));
+          } catch {}
         } else {
-          setSettings(DEFAULT_SETTINGS);
-        }
-
-        try {
-          const paneIdToLoad = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
-          const { data } = await apiService.getTtydConfig(paneIdToLoad);
-          if (data) {
-            const title = data.title || CurrentPaneId;
-            setPaneTitle(title);
-            setPaneWorkspace(data.workspace || '/home/w3c_offical');
-            setPaneAgentDuty(data.agent_duty || '');
-            setPaneAgentType(data.agent_type || '');
-            setPaneInitScript(data.init_script || '');
-            setPaneTgToken(data.tg_token || '');
-            setPaneTgChatId(data.tg_chat_id || '');
-            setPaneTtydPreview(data.ttyd_preview || '');
-            setPaneTgEnable(data.tg_enable || false);
-            
-            // Parse config JSON
-            let config: any = {};
-            try {
-              config = data.config ? JSON.parse(data.config) : {};
-            } catch (e) {
-              console.error('Failed to parse config:', e);
-            }
-            setPaneConfig(data.config || '{}');
-            setPreviewUrls(config.previewUrls || []);
-            
-            document.title = title;
-            
-            // Fetch bound agents
-            try {
-              const { data: agents } = await apiService.getAgentsByPane(CurrentPaneId);
-              setBoundAgents(agents.map((a: any) => a.name));
-            } catch (e) {
-              console.error('Failed to fetch agents', e);
-            }
-          } else {
-            setPaneTitle(CurrentPaneId);
-            document.title = CurrentPaneId;
-          }
-        } catch {
           setPaneTitle(CurrentPaneId);
           document.title = CurrentPaneId;
         }
-
-        setIsLoaded(true);
-        return;
+      } catch {
+        setPaneTitle(CurrentPaneId);
+        document.title = CurrentPaneId;
       }
-
-      const savedToken = TokenManager.getToken();
-      if (savedToken) {
-        try {
-          await apiService.verifyAuth(savedToken);
-          setToken(savedToken);
-        } catch (e) {
-          console.error('Token verification failed', e);
-          TokenManager.clearToken();
-        }
-      }
-      setIsCheckingAuth(false);
-
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (!parsed.commandHistory) parsed.commandHistory = [];
-          setSettings({ ...DEFAULT_SETTINGS, ...parsed });
-        } catch (e) { console.error('Failed to parse settings', e); }
-      }
-      setIsLoaded(true);
     };
-    init();
-  }, []);
-
-  // Initialize main agent tab when token is ready
-  useEffect(() => {
-    if (token && agentTabs.length === 0 && displayPaneId) {
-      setAgentTabs([{
-        paneId: displayPaneId,
-        title: displayPaneTitle,
-        url: urls.ttyd(displayPaneId, token),
-        closable: false
-      }]);
-    }
-  }, [token, displayPaneId]);
-
-  // Verify token and get permissions
-  useEffect(() => {
-    if (!token) return;
-    
-    apiService.verifyAuth(token)
-      .then(({ data }) => {
-        if (data.perms) {
-          setUserPerms(data.perms);
-        }
-      })
-      .catch(err => console.error('Failed to verify token:', err));
+    loadPaneConfig();
   }, [token]);
-
-  useEffect(() => {
-    if (isLoaded) localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings, isLoaded]);
 
   // Get favor dirs from globalVar
   useEffect(() => {
@@ -387,15 +232,6 @@ const App: React.FC = () => {
         .catch(err => console.error('Failed to reload config:', err));
     }
   }, [activeTab, token]);
-
-  // --- Network status from AppContext polling ---
-  useEffect(() => {
-    // Get agent status from currentPane
-    if (currentPane) {
-      setAgentStatus(currentPane.status || null);
-      if (currentPane.contextUsage != null) setContextUsage(currentPane.contextUsage);
-    }
-  }, [currentPane]);
 
   // Initialize tempPaneData when paneDetail changes (but not during save)
   useEffect(() => {
@@ -432,22 +268,6 @@ const App: React.FC = () => {
     }
   }, [activeTab, displayPaneId, api, loadGlobalVar]);
 
-  // Listen to network latency events
-  useEffect(() => {
-    const handleLatency = (e: CustomEvent) => {
-      const { latency } = e.detail;
-      if (latency === null) {
-        setNetworkStatus('offline');
-        setNetworkLatency(null);
-      } else {
-        setNetworkLatency(latency);
-        setNetworkStatus(latency < 100 ? 'excellent' : latency < 300 ? 'good' : 'poor');
-      }
-    };
-    window.addEventListener('network-latency', handleLatency as EventListener);
-    return () => window.removeEventListener('network-latency', handleLatency as EventListener);
-  }, []);
-
   // Listen to pin changes
   useEffect(() => {
     const handlePinChange = () => {
@@ -457,13 +277,6 @@ const App: React.FC = () => {
     window.addEventListener('pinnedPanesChanged', handlePinChange);
     return () => window.removeEventListener('pinnedPanesChanged', handlePinChange);
   }, []);
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   const handleLogin = (newToken: string) => setToken(newToken);
 
@@ -553,48 +366,6 @@ const App: React.FC = () => {
   };
 
   
-  const handlePanelChange = (pos: Position, size: Size) => {
-    setSettings(prev => ({ ...prev, panelPosition: pos, panelSize: size }));
-  };
-
-  const handleCapturePane = async (pane_id?: string, lines?: number) => {
-    if (isCapturing) return;
-    setIsCapturing(true);
-    const targetPane = pane_id || displayPaneId;
-    try {
-      const { data } = await apiService.capturePane(targetPane);
-      setCaptureOutput(data.output || '');
-    } catch (e) { console.error(e); }
-    finally { setIsCapturing(false); }
-  };
-
-  const handleRestart = async (pane_id?: string) => {
-    const targetPane = pane_id || displayPaneId;
-    if (!confirm(`Restart tmux and ttyd for ${targetPane}?`)) return;
-    setIsRestarting(true);
-    try {
-      const paneIdClean = targetPane.replace(':main.0', '');
-      await apiService.restartPane(paneIdClean);
-      for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 1000));
-        try {
-          const { data } = await apiService.getTtydStatus(paneIdClean);
-          if (data.status === 'running') {
-            setTimeout(() => location.reload(), 500);
-            return;
-          }
-        } catch {}
-      }
-      // Even on timeout, reload — the service likely restarted
-      setTimeout(() => location.reload(), 500);
-    } catch (e) {
-      console.error(e);
-      alert('Restart failed');
-    } finally {
-      setIsRestarting(false);
-    }
-  };
-
   const [tempPaneData, setTempPaneData] = useState<EditPaneData | null>(null);
 
   const handleSavePane = async () => {
@@ -1376,7 +1147,7 @@ const App: React.FC = () => {
                 contextUsage={contextUsage}
                 mouseMode={mouseMode}
                 onDraggingChange={setIsDragging}
-                isTogglingMouse={isTogglingMouse}
+                isTogglingMouse={false}
                 onToggleMouse={handleToggleMouse}
                 onReload={() => {
                   if (mainIframeRef.current) {
@@ -1428,7 +1199,7 @@ const App: React.FC = () => {
           contextUsage={contextUsage}
           mouseMode={mouseMode}
           onDraggingChange={setIsDragging}
-          isTogglingMouse={isTogglingMouse}
+          isTogglingMouse={false}
           onToggleMouse={handleToggleMouse}
           onReload={() => {
             if (mainIframeRef.current) {
