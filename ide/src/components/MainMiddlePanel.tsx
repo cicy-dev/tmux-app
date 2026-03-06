@@ -15,9 +15,14 @@ interface MainMiddlePanelProps {
   commandPanelRef: React.RefObject<CommandPanelHandle>;
   pinnedPanes: string[];
   setPinnedPanes: (p: string[]) => void;
+  leftWidth: number;
+  leftCollapsed: boolean;
+  rightCollapsed: boolean;
+  onToggleLeft: () => void;
+  onToggleRight: () => void;
 }
 
-const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgents, mainIframeRef, commandPanelRef, pinnedPanes, setPinnedPanes }) => {
+const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgents, mainIframeRef, commandPanelRef, pinnedPanes, setPinnedPanes, leftWidth, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight }) => {
   const { allPanes, paneDetail, api, setPaneDetail, selectPane } = useApp();
   const { confirm: confirmDialog } = useDialog();
   const {
@@ -42,7 +47,7 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
     <div 
       id="main-middle" 
       className="absolute inset-0" 
-      style={{width: `${ttydWidth}px`, left: '240px'}}
+      style={{width: `${ttydWidth}px`, left: `${leftWidth}px`}}
       onMouseLeave={(e) => {
         const target = e.currentTarget.querySelector('.ttyd-mask') as HTMLElement;
         if (target) target.style.display = 'block';
@@ -50,6 +55,9 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
     >
       <div className="h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2">
         <div id="main-middle-topbar" className="flex items-center gap-2 flex-1 min-w-0">
+          <button onClick={onToggleLeft} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active" title={leftCollapsed ? 'Show sidebar' : 'Hide sidebar'}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          </button>
           <div className="relative group flex items-center gap-1">
             <button className="px-3 py-1 rounded text-sm bg-vsc-button text-vsc-button-text">
               {displayPaneTitle}
@@ -79,6 +87,9 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
             <div className={`w-2 h-2 rounded-full ${networkStatus === 'excellent' ? 'bg-green-500' : networkStatus === 'good' ? 'bg-yellow-500' : networkStatus === 'poor' ? 'bg-orange-500' : 'bg-red-500'}`}></div>
             <span>{networkLatency}ms</span>
           </div>
+          <button onClick={onToggleRight} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active" title={rightCollapsed ? 'Show panel' : 'Hide panel'}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          </button>
           <div className="relative">
             <button 
               type="button" 

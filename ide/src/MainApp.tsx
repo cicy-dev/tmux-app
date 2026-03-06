@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const {
     displayPaneId, token, setToken, isCheckingAuth, hasPermission,
     ttydWidth, setTtydWidth, isDragging, setIsDragging,
+    leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed,
     agentTabs, setAgentTabs, setActiveAgentTab,
     settings, setSettings, isLoaded,
     toast,
@@ -69,30 +70,38 @@ const App: React.FC = () => {
   if (!token) return <LoginForm onLogin={(t) => setToken(t)} />;
   if (!isLoaded) return <div className="bg-vsc-bg w-screen h-screen" />;
 
+  const leftW = leftCollapsed ? 0 : 240;
+
   return (
     <div className="relative w-screen h-screen overflow-hidden font-sans">
       <div id="main" className="fixed inset-0">
-        <div id="left-side" className="absolute inset-y-0 left-0 w-[240px] bg-vsc-bg-secondary border-r border-vsc-border z-10">
-          <LeftSidePanel />
-        </div>
+        {!leftCollapsed && (
+          <div id="left-side" className="absolute inset-y-0 left-0 bg-vsc-bg-secondary border-r border-vsc-border z-10" style={{width: leftW}}>
+            <LeftSidePanel onCollapse={() => setLeftCollapsed(true)} />
+          </div>
+        )}
 
-        <RightSidePanel ttydWidth={ttydWidth} isDragging={isDragging} setBoundAgents={setBoundAgents} />
+        {!rightCollapsed && (
+          <RightSidePanel ttydWidth={ttydWidth} isDragging={isDragging} setBoundAgents={setBoundAgents} leftWidth={leftW} />
+        )}
 
-        <div id="drag" 
-          className="absolute inset-y-0 w-1 bg-vsc-border hover:bg-vsc-accent cursor-col-resize z-10"
-          style={{left: `calc(240px + ${ttydWidth}px)`}}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-            let currentWidth = ttydWidth;
-            const onMouseMove = (ev: MouseEvent) => { currentWidth = Math.max(200, Math.min(window.innerWidth - 560, ev.clientX - 360)); setTtydWidth(currentWidth); };
-            const onMouseUp = () => { setIsDragging(false); localStorage.setItem(`${CurrentPaneId}_ttydWidth`, currentWidth.toString()); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-          }}
-        ></div>
+        {!rightCollapsed && (
+          <div id="drag" 
+            className="absolute inset-y-0 w-1 bg-vsc-border hover:bg-vsc-accent cursor-col-resize z-10"
+            style={{left: `calc(${leftW}px + ${ttydWidth}px)`}}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+              let currentWidth = ttydWidth;
+              const onMouseMove = (ev: MouseEvent) => { currentWidth = Math.max(200, Math.min(window.innerWidth - 560, ev.clientX - leftW - 120)); setTtydWidth(currentWidth); };
+              const onMouseUp = () => { setIsDragging(false); localStorage.setItem(`${CurrentPaneId}_ttydWidth`, currentWidth.toString()); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp);
+            }}
+          ></div>
+        )}
 
-        <MainMiddlePanel ttydWidth={ttydWidth} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} />
+        <MainMiddlePanel ttydWidth={rightCollapsed ? window.innerWidth - leftW : ttydWidth} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} leftWidth={leftW} leftCollapsed={leftCollapsed} rightCollapsed={rightCollapsed} onToggleLeft={() => setLeftCollapsed(!leftCollapsed)} onToggleRight={() => setRightCollapsed(!rightCollapsed)} />
       </div>
 
       {settings.showVoiceControl && hasPermission('prompt') && (

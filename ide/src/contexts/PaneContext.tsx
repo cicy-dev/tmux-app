@@ -47,6 +47,10 @@ interface PaneContextType {
   isInteracting: boolean;
   setIsInteracting: (v: boolean) => void;
   commandPanelHeight: number;
+  leftCollapsed: boolean;
+  setLeftCollapsed: (v: boolean) => void;
+  rightCollapsed: boolean;
+  setRightCollapsed: (v: boolean) => void;
 
   // Tabs
   activeTab: string;
@@ -114,6 +118,8 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isDragging, setIsDragging] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [commandPanelHeight] = useState(220);
+  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem('leftCollapsed') === 'true');
+  const [rightCollapsed, setRightCollapsed] = useState(() => localStorage.getItem('rightCollapsed') === 'true');
 
   // Tabs
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -294,6 +300,8 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     displayPaneId, displayPaneTitle,
     token, setToken, userPerms, isCheckingAuth, hasPermission,
     ttydWidth, setTtydWidth, isDragging, setIsDragging, isInteracting, setIsInteracting, commandPanelHeight,
+    leftCollapsed, setLeftCollapsed: (v: boolean) => { setLeftCollapsed(v); localStorage.setItem('leftCollapsed', String(v)); },
+    rightCollapsed, setRightCollapsed: (v: boolean) => { setRightCollapsed(v); localStorage.setItem('rightCollapsed', String(v)); },
     activeTab, setActiveTab, agentsSubTab, setAgentsSubTab, previewTab, setPreviewTab,
     agentStatus, contextUsage, mouseMode, readOnly, setReadOnly, isRestarting,
     agentTabs, setAgentTabs, activeAgentTab, setActiveAgentTab,

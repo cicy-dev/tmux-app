@@ -101,6 +101,10 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   onCorrectionLoading,
 }, ref) => {
   const [selectedPane, setSelectedPane] = useState(paneTarget);
+
+  // Sync selectedPane when paneTarget changes (switching agents)
+  useEffect(() => { setSelectedPane(paneTarget); }, [paneTarget]);
+
   const [promptText, setPromptText] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);

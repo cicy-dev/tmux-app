@@ -14,13 +14,17 @@ interface RightSidePanelProps {
   ttydWidth: number;
   isDragging: boolean;
   setBoundAgents: (agents: string[]) => void;
+  leftWidth: number;
 }
 
-const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, setBoundAgents }) => {
+const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, setBoundAgents, leftWidth }) => {
   const { paneDetail, api, setPaneDetail, updatePane, globalVar, loadGlobalVar, updateGlobalVar } = useApp();
   const { displayPaneId, token, hasPermission, activeTab, setActiveTab, agentsSubTab, setAgentsSubTab, previewTab, setPreviewTab, toast, setToast, isInteracting } = usePane();
 
-  const [paneWorkspace, setPaneWorkspace] = useState<string>('/home/w3c_offical');
+  const [paneWorkspace, setPaneWorkspace] = useState<string>(() => {
+    const cached = localStorage.getItem(`codeserver_folder_${displayPaneId}`);
+    return cached || paneDetail?.workspace || '';
+  });
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
   const [tempPaneData, setTempPaneData] = useState<EditPaneData | null>(null);
@@ -43,6 +47,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
       if ((frame as any).src !== undefined) (frame as any).src = newUrl;
       else frame.setAttribute('src', newUrl);
       setPaneWorkspace(path);
+      localStorage.setItem(`codeserver_folder_${displayPaneId}`, path);
     } catch {
       setToast('Failed to check path');
       setTimeout(() => setToast(null), 3000);
@@ -84,11 +89,14 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
 
   // Load workspace from paneDetail
   useEffect(() => {
-    if (paneDetail?.workspace) setPaneWorkspace(paneDetail.workspace);
+    if (paneDetail?.workspace) {
+      setPaneWorkspace(paneDetail.workspace);
+      localStorage.setItem(`codeserver_folder_${displayPaneId}`, paneDetail.workspace);
+    }
   }, [paneDetail]);
 
   return (
-    <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(240px + ${ttydWidth}px)`, width: `calc(100vw - 240px - ${ttydWidth}px - 4px)`}}>
+    <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(${leftWidth}px + ${ttydWidth}px)`, width: `calc(100vw - ${leftWidth}px - ${ttydWidth}px - 4px)`}}>
       <div id="right-side-top" className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
         {([ 'Code', 'Agents', 'Preview', 'Settings', 'Global'] as const).map(tab => (
           <button

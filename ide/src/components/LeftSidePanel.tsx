@@ -3,7 +3,15 @@ import ReactDOM from 'react-dom';
 import { useApp } from '../contexts/AppContext';
 import { useDialog } from '../contexts/DialogContext';
 
-const LeftSidePanel: React.FC = () => {
+const statusConfig: Record<string, { color: string; label: string }> = {
+  idle: { color: 'bg-green-500', label: 'idle' },
+  thinking: { color: 'bg-yellow-500 animate-pulse', label: 'thinking' },
+  wait_auth: { color: 'bg-red-500', label: 'auth' },
+  wait_startup: { color: 'bg-blue-500 animate-pulse', label: 'starting' },
+  compacting: { color: 'bg-purple-500 animate-pulse', label: 'compact' },
+};
+
+const LeftSidePanel: React.FC<{onCollapse?: () => void}> = ({onCollapse}) => {
   const { allPanes, currentPaneId, selectPane, paneDetail } = useApp();
   const { openDialog, closeDialog, activeDialog } = useDialog();
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,158 +30,148 @@ const LeftSidePanel: React.FC = () => {
     return () => window.removeEventListener('pinnedPanesChanged', handlePinChange);
   }, []);
 
-  const formatTimeAgo = (timestamp: string) => {
-    const now = Date.now();
-    const time = new Date(timestamp).getTime();
-    const diff = Math.floor((now - time) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
+  const getStatusInfo = (pane: any) => {
+    if (pane.isThinking) return statusConfig.thinking;
+    if (pane.isWaitingAuth) return statusConfig.wait_auth;
+    if (pane.isWaitStartup) return statusConfig.wait_startup;
+    if (pane.isCompacting) return statusConfig.compacting;
+    if (pane.status) return statusConfig[pane.status] || { color: 'bg-gray-500', label: pane.status };
+    return { color: 'bg-gray-600', label: '' };
   };
 
-  const getAvatar = (paneId: string, agentType?: string) => {
-    if (agentType === 'kiro-cli') return '🤖';
-    if (agentType === 'opencode') return '💻';
-    const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵'];
-    const hash = paneId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return emojis[hash % emojis.length];
-  };
-
-  const getAvatarColor = (paneId: string) => {
-    const colors = [
-      'bg-red-600', 'bg-orange-600', 'bg-yellow-600', 'bg-green-600',
-      'bg-teal-600', 'bg-blue-600', 'bg-indigo-600', 'bg-purple-600',
-      'bg-pink-600', 'bg-rose-600'
-    ];
-    const hash = paneId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
+  const formatTimeAgo = (ts: number | string | null) => {
+    if (!ts) return '';
+    const sec = typeof ts === 'number' ? ts : Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+    if (sec < 60) return `${sec}s`;
+    if (sec < 3600) return `${Math.floor(sec / 60)}m`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)}h`;
+    return `${Math.floor(sec / 86400)}d`;
   };
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
-    console.log('Create pane with title:', newTitle);
     closeDialog();
     setNewTitle('');
   };
 
-  const filteredPanes = allPanes.filter((pane: any) =>
-    (pane.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     pane.pane_id?.toLowerCase().includes(searchQuery.toLowerCase()))
+  const togglePin = (paneId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const isPinned = pinnedPanes.includes(paneId);
+    const updated = isPinned ? pinnedPanes.filter(id => id !== paneId) : [...pinnedPanes, paneId];
+    setPinnedPanes(updated);
+    localStorage.setItem('pinnedPanes', JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('pinnedPanesChanged'));
+  };
+
+  const filtered = allPanes.filter((p: any) =>
+    (p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     p.pane_id?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const sortedPanes = [...filteredPanes].sort((a, b) => {
-    const aPin = pinnedPanes.includes(a.pane_id);
-    const bPin = pinnedPanes.includes(b.pane_id);
-    if (aPin && !bPin) return -1;
-    if (!aPin && bPin) return 1;
-    return 0;
+  const sorted = [...filtered].sort((a, b) => {
+    const ap = pinnedPanes.includes(a.pane_id) ? 0 : 1;
+    const bp = pinnedPanes.includes(b.pane_id) ? 0 : 1;
+    return ap - bp;
   });
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-2 border-b border-vsc-border flex gap-2">
+    <div className="h-full flex flex-col bg-vsc-bg-secondary">
+      {/* Header */}
+      <div className="h-10 flex items-center justify-between px-3 border-b border-vsc-border flex-shrink-0">
+        <span className="text-xs font-semibold text-vsc-text-secondary uppercase tracking-wider">Agents</span>
+        <div className="flex items-center gap-1">
+          <button onClick={() => openDialog('createAgent')} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover" title="New agent">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          {onCollapse && (
+            <button onClick={onCollapse} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover" title="Collapse">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="px-2 py-1.5 flex-shrink-0">
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search agents..."
-          className="flex-1 bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm rounded px-3 py-1.5 focus:outline-none focus:border-vsc-accent"
+          placeholder="Search..."
+          className="w-full bg-vsc-bg border border-vsc-border text-vsc-text text-xs rounded px-2 py-1 focus:outline-none focus:border-vsc-accent"
         />
-        <button
-          onClick={() => openDialog('createAgent')}
-          className="bg-vsc-button hover:bg-vsc-button-hover text-white px-3 py-1.5 rounded text-sm"
-          title="创建新 Agent"
-        >
-          +
-        </button>
       </div>
+
+      {/* Pane list */}
       <div className="flex-1 overflow-auto">
-        {sortedPanes.map((pane: any) => {
+        {sorted.map((pane: any) => {
+          const isActive = currentPaneId === pane.pane_id;
           const isPinned = pinnedPanes.includes(pane.pane_id);
+          const si = getStatusInfo(pane);
+          const title = (isActive && paneDetail?.title) ? paneDetail.title : (pane.title || pane.pane_id);
+          const shortId = pane.pane_id?.replace(':main.0', '');
+
           return (
             <div
               key={pane.pane_id}
               onClick={() => selectPane(pane.pane_id)}
-              className={`group p-3 border-b border-vsc-border hover:bg-vsc-bg-hover cursor-pointer ${
-                currentPaneId === pane.pane_id ? 'bg-blue-600 bg-opacity-30 border-l-4 border-l-blue-500' : isPinned ? 'bg-yellow-900 bg-opacity-20' : ''
+              className={`group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 transition-colors ${
+                isActive
+                  ? 'bg-vsc-bg-active border-l-blue-500'
+                  : isPinned
+                    ? 'border-l-yellow-600 border-opacity-50 hover:bg-vsc-bg-hover'
+                    : 'border-l-transparent hover:bg-vsc-bg-hover'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex gap-2 flex-1 min-w-0">
-                  <div className={`w-10 h-10 rounded-full ${getAvatarColor(pane.pane_id)} bg-opacity-20 flex items-center justify-center text-xl flex-shrink-0`}>
-                    {getAvatar(pane.pane_id, pane.agent_type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="text-sm font-medium text-vsc-text truncate">
-                        {currentPaneId === pane.pane_id && paneDetail?.title
-                          ? paneDetail.title
-                          : (pane.title || pane.pane_id)}
-                      </div>
-                      {pane.agent_type && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-purple-600 bg-opacity-30 text-purple-400 flex-shrink-0">
-                          {pane.agent_type}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-vsc-text-secondary">
-                      <span className="truncate">{pane.pane_id}</span>
-                      {pane.status && (
-                        <>
-                          <span>•</span>
-                          <span className={`flex-shrink-0 ${
-                            pane.status === 'idle' ? 'text-green-400' :
-                            pane.status === 'thinking' ? 'text-yellow-400' :
-                            pane.status === 'wait_auth' ? 'text-red-400' :
-                            'text-gray-400'
-                          }`}>
-                            {pane.status}
-                          </span>
-                        </>
-                      )}
-                      {pane.updated_at && (
-                        <>
-                          <span>•</span>
-                          <span className="flex-shrink-0">{formatTimeAgo(pane.updated_at)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+              {/* Status dot */}
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${si.color}`} title={si.label} />
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-sm truncate ${isActive ? 'text-vsc-text font-medium' : 'text-vsc-text-secondary'}`}>
+                    {title}
+                  </span>
+                  {isPinned && <span className="text-yellow-500 text-xs flex-shrink-0">📌</span>}
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-vsc-text-secondary">
+                  <span>{shortId}</span>
+                  {si.label && <span className={`${si.color.replace('animate-pulse', '')} bg-opacity-20 px-1 rounded`}>{si.label}</span>}
+                  {pane.contextUsage != null && <span>{pane.contextUsage}%</span>}
+                  {pane.timeAgo != null && <span>{formatTimeAgo(pane.timeAgo)}</span>}
                 </div>
               </div>
+
+              {/* Pin on hover */}
+              <button
+                onClick={(e) => togglePin(pane.pane_id, e)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-vsc-text-secondary hover:text-yellow-500 transition-opacity"
+                title={isPinned ? 'Unpin' : 'Pin'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
+              </button>
             </div>
           );
         })}
       </div>
 
+      {/* Create dialog */}
       {activeDialog === 'createAgent' && ReactDOM.createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999]" onClick={closeDialog}>
-          <div className="bg-vsc-bg border border-vsc-border rounded p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-vsc-text font-semibold mb-3">创建新 Agent</h3>
+          <div className="bg-vsc-bg border border-vsc-border rounded-lg p-4 max-w-sm w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-vsc-text text-sm font-semibold mb-3">New Agent</h3>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="输入 Agent 标题..."
-              className="w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm rounded px-3 py-2 mb-4 focus:outline-none focus:border-vsc-accent"
+              placeholder="Agent title..."
+              className="w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm rounded px-3 py-2 mb-3 focus:outline-none focus:border-vsc-accent"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => { closeDialog(); setNewTitle(''); }}
-                className="px-4 py-1.5 text-sm bg-vsc-bg-secondary hover:bg-vsc-bg-active text-vsc-text rounded"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={!newTitle.trim()}
-                className="px-4 py-1.5 text-sm bg-vsc-button hover:bg-vsc-button-hover disabled:bg-vsc-bg-active disabled:cursor-not-allowed text-white rounded"
-              >
-                创建
-              </button>
+              <button onClick={() => { closeDialog(); setNewTitle(''); }} className="px-3 py-1.5 text-xs bg-vsc-bg-secondary hover:bg-vsc-bg-active text-vsc-text rounded">Cancel</button>
+              <button onClick={handleCreate} disabled={!newTitle.trim()} className="px-3 py-1.5 text-xs bg-vsc-button hover:bg-vsc-button-hover disabled:opacity-40 text-white rounded">Create</button>
             </div>
           </div>
         </div>,
