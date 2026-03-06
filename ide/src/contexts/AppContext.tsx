@@ -20,6 +20,7 @@ interface AppContextType {
 
   // Pane Selection
   currentPaneId: string | null;
+  currentPane: Agent | undefined;
   selectPane: (paneId: string) => void;
   clearPane: () => void;
 
@@ -74,12 +75,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const fetchAllPanes = async () => {
       try {
         const data = await api.getAgents();
-        const panesArray = Object.values(data) || [];
+        const panesArray = Object.values(data as Record<string, Agent>) || [];
         setAllPanes(panesArray);
         
         // Set first pane as current if not set
         if (panesArray.length > 0 && !PaneManager.getCurrentPane()) {
-          const firstPane = panesArray[0] as any;
+          const firstPane = panesArray[0];
           PaneManager.setCurrentPane(firstPane.pane_id);
           setCurrentPaneId(firstPane.pane_id);
         }
@@ -122,7 +123,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       const data = await api.getAgents();
-      setAgents(Object.values(data));
+      setAgents(Object.values(data as Record<string, Agent>));
       setError(null);
     } catch (err: any) {
       setError(err.message);
@@ -155,6 +156,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     login,
     logout,
     currentPaneId,
+    currentPane: allPanes.find(p => p.pane_id === currentPaneId),
     selectPane,
     clearPane,
     api,
@@ -167,6 +169,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setError,
   };
 
+  // Debug: Log context changes
+  React.useEffect(() => {
+    console.log('[AppContext] State updated:', {
+      currentPaneId,
+      currentPane: allPanes.find(p => p.pane_id === currentPaneId),
+      allPanesCount: allPanes.length,
+      allPanes: allPanes.map(p => ({ pane_id: p.pane_id, title: p.title }))
+    });
+  }, [currentPaneId, allPanes]);
+
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
@@ -175,5 +187,11 @@ export const useApp = () => {
   if (!context) {
     throw new Error('useApp must be used within AppProvider');
   }
+  
+  // Expose to window for debugging
+  if (typeof window !== 'undefined') {
+    (window as any).__APP_CONTEXT__ = context;
+  }
+  
   return context;
 };

@@ -32,6 +32,7 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
   const [resizing, setResizing] = useState<string | null>(null);
   const [startHeight, setStartHeight] = useState<number>(0);
   const [startY, setStartY] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     fetchAllAgents();
@@ -172,6 +173,13 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
 
   return (
     <div className="flex flex-col h-full bg-vsc-bg p-3">
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search agents..."
+        className="w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm rounded px-3 py-1.5 mb-3 focus:outline-none focus:border-vsc-accent"
+      />
       <div className="flex gap-2 mb-3">
         <select
           value={selectedAgent}
@@ -239,7 +247,7 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
         </div>
       ) : (
         <div className="flex flex-col gap-2 h-full overflow-auto">
-          {agents.filter(a => a.name !== ttydPreview).map(agent => (
+          {agents.filter(a => a.name !== ttydPreview && (a.title?.toLowerCase().includes(searchQuery.toLowerCase()) || a.name.toLowerCase().includes(searchQuery.toLowerCase()))).map(agent => (
             <div 
               key={agent.id} 
               className="bg-vsc-bg-secondary border border-vsc-border rounded relative" 

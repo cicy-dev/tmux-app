@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Loader2, SplitSquareHorizontal, SplitSquareVertical, XSquare, RotateCcw, Power, Home, RefreshCw, MoreVertical, History, GripHorizontal, Plus, Folder, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, SplitSquareHorizontal, SplitSquareVertical, XSquare, Home, RefreshCw, MoreVertical, Folder } from 'lucide-react';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
@@ -43,7 +43,7 @@ declare global {
 }
 
 const App: React.FC = () => {
-  const { currentPaneId, allPanes } = useApp();
+  const { currentPaneId, allPanes, currentPane } = useApp();
   const MODE = "ttyd";
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -70,19 +70,10 @@ const App: React.FC = () => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [ttydWidth, setTtydWidth] = useState(() => {
     const saved = localStorage.getItem(`${CurrentPaneId}_ttydWidth`);
-    return saved ? parseInt(saved) : 640;
-  });
-  const [ttydPreviewHeight, setTtydPreviewHeight] = useState(() => {
-    const saved = localStorage.getItem(`${CurrentPaneId}_ttydPreviewHeight`);
-    return saved ? parseInt(saved) : 300;
-  });
-  const [isAgentsMinimized, setIsAgentsMinimized] = useState(false);
-  const [isAgentsMaximized, setIsAgentsMaximized] = useState(false);
-  const [commandPanelHeight, setCommandPanelHeight] = useState(() => {
-    const saved = localStorage.getItem(`${CurrentPaneId}_commandPanelHeight`);
-    return saved ? parseInt(saved) : 220;
+    return saved ? parseInt(saved) : 360;
   });
   const [isDragging, setIsDragging] = useState(false);
+  const [commandPanelHeight] = useState(220);
   const [activeTab, setActiveTab] = useState<'Code' | 'Services' | 'Docs' | 'Preview' | 'Agents' | 'Settings'>(() => {
     const saved = localStorage.getItem(`${CurrentPaneId}_activeTab`);
     return (saved as any) || 'Code';
@@ -97,12 +88,6 @@ const App: React.FC = () => {
   const [historyData, setHistoryData] = useState<{history: string[], onSelect: (cmd: string) => void} | null>(null);
   const [showCorrectionResult, setShowCorrectionResult] = useState(false);
   const [correctionData, setCorrectionData] = useState<[string, string] | null>(null);
-  const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
-  const [agentCaptureOpen, setAgentCaptureOpen] = useState(false);
-  const [showTtydInCode, setShowTtydInCode] = useState(() => {
-    const saved = localStorage.getItem(`${CurrentPaneId}_showTtydInCode`);
-    return saved !== 'false';
-  });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showDesktopDialog, setShowDesktopDialog] = useState(false);
 
@@ -113,8 +98,7 @@ const App: React.FC = () => {
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
   const [agentTabs, setAgentTabs] = useState<Array<{paneId: string, title:string,url: string, closable: boolean}>>([]);
-  console.log({agentTabs})
-  const [activeAgentTab, setActiveAgentTab] = useState<string>(CurrentPaneId);
+
   const [networkLatency, setNetworkLatency] = useState<number | null>(null);
   const [networkStatus, setNetworkStatus] = useState<'excellent' | 'good' | 'poor' | 'offline'>('good');
   const [toast, setToast] = useState<string | null>(null);
@@ -127,19 +111,9 @@ const App: React.FC = () => {
   const [mouseMode, setMouseMode] = useState<'on' | 'off'>('off');
   const [visitedPanes, setVisitedPanes] = useState<string[]>([]);
 
-  // Compute display values - use useMemo to ensure reactive updates
-  const currentPane = React.useMemo(() => 
-    allPanes.find((p: any) => p.pane_id === currentPaneId), 
-    [allPanes, currentPaneId]
-  );
-  const displayPaneId = React.useMemo(() => 
-    currentPaneId || CurrentPaneId || '', 
-    [currentPaneId]
-  );
-  const displayPaneTitle = React.useMemo(() => 
-    currentPane?.title || paneTitle || displayPaneId || 'No pane selected',
-    [currentPane, paneTitle, displayPaneId]
-  );
+  // Use Context values directly
+  const displayPaneId = currentPaneId || CurrentPaneId || '';
+  const displayPaneTitle = currentPane?.title || displayPaneId || 'No pane selected';
 
   const hasPermission = (perm: string) => userPerms.includes('api_full') || userPerms.includes(perm);
 
@@ -570,11 +544,12 @@ const App: React.FC = () => {
   const handleCapturePane = async (pane_id?: string, lines?: number) => {
     if (isCapturing) return;
     setIsCapturing(true);
+    const targetPane = pane_id || displayPaneId;
     try {
       const res = await fetch(`${API_BASE}/api/tmux/capture_pane`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ pane_id: pane_id || displayPaneId, lines: lines || 100 })
+        body: JSON.stringify({ pane_id: targetPane, lines: lines || 100 })
       });
       if (res.ok) {
         const data = await res.json();
@@ -704,12 +679,12 @@ const App: React.FC = () => {
         MODE === "ttyd" && <div id="main" className="fixed inset-0"> 
 
         {/* Column 1: Left - Agents List */}
-        <div id="left-side" className="absolute inset-y-0 left-0 w-64 bg-vsc-bg-secondary border-r border-vsc-border z-10 overflow-hidden">
+        <div id="left-side" className="absolute inset-y-0 left-0 w-[360px] bg-vsc-bg-secondary border-r border-vsc-border z-10 overflow-hidden">
           <LeftSidePanel />
         </div>
 
         {/* Column 3: Right - Code/Agents/Preview/Settings */}
-        <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(256px + ${ttydWidth}px)`, width: `calc(100vw - 256px - ${ttydWidth}px - 4px)`}}>
+        <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(360px + ${ttydWidth}px)`, width: `calc(100vw - 360px - ${ttydWidth}px - 4px)`}}>
           <div id="right-side-top" className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
             {([ 'Code', 'Agents', 'Preview', 'Settings'] as const).map(tab => (
               <button
@@ -728,7 +703,7 @@ const App: React.FC = () => {
             {paneWorkspace && (
               <div id="right-side-inner" className="absolute inset-0 flex flex-col" style={{marginTop: '40px', display: activeTab === 'Code' ? 'flex' : 'none'}}>
                 {/* 区域 A: Code Server - 蓝色背景 */}
-                <div  id="right-side-code-server"  className="w-full flex-1 overflow-hidden flex flex-col" style={{display: isAgentsMaximized ? 'none' : 'flex'}}>
+                <div  id="right-side-code-server"  className="w-full flex-1 overflow-hidden flex flex-col">
                   {/* Home + Path Input */}
                   <div className=".bg-vsc-bg h-8 border-b border-vsc-border flex items-center px-2 gap-2 flex-shrink-0">
                     <button 
@@ -783,15 +758,6 @@ const App: React.FC = () => {
                   </div>
                   <WebFrame codeServer loading="lazy" src={`https://code.cicy.de5.net/?folder=${paneWorkspace}`} className="code-server-iframe w-full flex-1" />
                 </div>
-                {showTtydInCode && (
-                  <>
-                    <div 
-                      className="w-full h-1 bg-vsc-border flex-shrink-0"
-                      style={{display: 'none'}}
-                    ></div>
-                    {isDragging && <div className="absolute inset-0 z-20"></div>}
-                  </>
-                )}
                 {isDragging && <div className="absolute inset-0 z-20"></div>}
               </div>
             )}
@@ -896,19 +862,7 @@ const App: React.FC = () => {
                     token={token} 
                     isDragging={isDragging} 
                     onAgentsChange={(agents) => setBoundAgents(agents)} 
-                    onCaptureOpen={setAgentCaptureOpen}
-                    onRestart={handleRestart}
-                    onCapture={handleCapturePane}
-                    onToggleMouse={async (paneId) => {
-                      try {
-                        await fetch(getApiUrl(`/api/tmux/mouse/toggle?pane_id=${encodeURIComponent(paneId)}`), {
-                          method: 'POST',
-                          headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                      } catch (err) {
-                        console.error('Failed to toggle mouse:', err);
-                      }
-                    }}
+                    onCaptureOpen={() => {}}
                   />
                 )}
               </div>
@@ -917,7 +871,6 @@ const App: React.FC = () => {
           {activeTab === 'Settings' && (
             <div style={{marginTop: '40px', height: 'calc(100% - 40px)'}}>
               <SettingsView 
-                token={token}
                 pane={{
                   target: TMUX_TARGET, 
                   title: paneTitle, 
@@ -964,7 +917,7 @@ const App: React.FC = () => {
         </div>
         <div id="drag" 
           className="absolute inset-y-0 w-1 bg-vsc-border hover:bg-vsc-accent cursor-col-resize z-10"
-          style={{left: `calc(256px + ${ttydWidth}px)`}}
+          style={{left: `calc(360px + ${ttydWidth}px)`}}
           onMouseDown={(e) => {
             e.preventDefault();
             setIsDragging(true);
@@ -972,7 +925,7 @@ const App: React.FC = () => {
             const startWidth = ttydWidth;
             let currentWidth = startWidth;
             const onMouseMove = (e: MouseEvent) => {
-              const newWidth = Math.max(200, Math.min(window.innerWidth - 456, e.clientX - 256));
+              const newWidth = Math.max(200, Math.min(window.innerWidth - 560, e.clientX - 360));
               currentWidth = newWidth;
               setTtydWidth(newWidth);
             };
@@ -990,7 +943,7 @@ const App: React.FC = () => {
         <div 
           id="main-middle" 
           className="absolute inset-0" 
-          style={{width: `${ttydWidth}px`, left: '256px'}}
+          style={{width: `${ttydWidth}px`, left: '360px'}}
           onMouseLeave={(e) => {
             const target = e.currentTarget.querySelector('.ttyd-mask') as HTMLElement;
             if (target) target.style.display = 'block';
@@ -1433,9 +1386,12 @@ const App: React.FC = () => {
       <CaptureDialog 
         output={captureOutput}
         onClose={() => setCaptureOutput(null)}
-        onRefresh={(paneId, lines) => handleCapturePane(paneId, lines)}
+        onRefresh={(paneId, lines) => {
+          setCaptureOutput('');
+          handleCapturePane(paneId, lines);
+        }}
         isRefreshing={isCapturing}
-        paneId={CurrentPaneId}
+        paneId={displayPaneId}
       />
 
 
@@ -1510,21 +1466,243 @@ const MiddlePanel: React.FC = () => {
 
 const LeftSidePanel: React.FC = () => {
   const { allPanes, currentPaneId, selectPane } = useApp();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pinnedPanes, setPinnedPanes] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pinnedPanes');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<{paneId: string; title: string} | null>(null);
+  const [createDialog, setCreateDialog] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  
+  const formatTimeAgo = (timestamp: string) => {
+    const now = Date.now();
+    const time = new Date(timestamp).getTime();
+    const diff = Math.floor((now - time) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  };
+  
+  const getAvatar = (paneId: string, agentType?: string) => {
+    if (agentType === 'kiro-cli') return '🤖';
+    if (agentType === 'opencode') return '💻';
+    const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵'];
+    const hash = paneId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return emojis[hash % emojis.length];
+  };
+  
+  const getAvatarColor = (paneId: string) => {
+    const colors = [
+      'bg-red-600', 'bg-orange-600', 'bg-yellow-600', 'bg-green-600', 
+      'bg-teal-600', 'bg-blue-600', 'bg-indigo-600', 'bg-purple-600', 
+      'bg-pink-600', 'bg-rose-600'
+    ];
+    const hash = paneId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+  
+  const handleCreate = async () => {
+    if (!newTitle.trim()) return;
+    // TODO: 调用创建 API
+    console.log('Create pane with title:', newTitle);
+    setCreateDialog(false);
+    setNewTitle('');
+  };
+  
+  const togglePin = (paneId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPinnedPanes(prev => {
+      const newPinned = prev.includes(paneId) 
+        ? prev.filter(id => id !== paneId)
+        : [...prev, paneId];
+      localStorage.setItem('pinnedPanes', JSON.stringify(newPinned));
+      return newPinned;
+    });
+  };
+  
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    // TODO: 调用删除 API
+    console.log('Delete pane:', deleteConfirm.paneId);
+    setDeleteConfirm(null);
+  };
+  
+  const filteredPanes = allPanes.filter((pane: any) => 
+    (pane.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     pane.pane_id?.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+  
+  const sortedPanes = [...filteredPanes].sort((a, b) => {
+    const aPin = pinnedPanes.includes(a.pane_id);
+    const bPin = pinnedPanes.includes(b.pane_id);
+    if (aPin && !bPin) return -1;
+    if (!aPin && bPin) return 1;
+    return 0;
+  });
+  
   return (
-    <div className="h-full overflow-auto">
-      {allPanes.map((pane: any) => (
-        <div 
-          key={pane.pane_id} 
-          onClick={() => selectPane(pane.pane_id)}
-          className={`p-2 border-b border-vsc-border hover:bg-vsc-bg-hover cursor-pointer ${
-            currentPaneId === pane.pane_id ? 'bg-vsc-bg-active' : ''
-          }`}
+    <>
+      <div className="h-full flex flex-col">
+      <div className="p-2 border-b border-vsc-border flex gap-2">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search agents..."
+          className="flex-1 bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm rounded px-3 py-1.5 focus:outline-none focus:border-vsc-accent"
+        />
+        <button
+          onClick={() => setCreateDialog(true)}
+          className="bg-vsc-button hover:bg-vsc-button-hover text-white px-3 py-1.5 rounded text-sm"
+          title="创建新 Agent"
         >
-          <div className="text-sm text-vsc-text truncate">{pane.title || pane.pane_id}</div>
-          <div className="text-xs text-vsc-text-secondary">{pane.pane_id}</div>
+          +
+        </button>
+      </div>
+      <div className="flex-1 overflow-auto">
+        {sortedPanes.map((pane: any) => {
+          const isPinned = pinnedPanes.includes(pane.pane_id);
+          return (
+            <div 
+              key={pane.pane_id} 
+              onClick={() => selectPane(pane.pane_id)}
+              className={`group p-3 border-b border-vsc-border hover:bg-vsc-bg-hover cursor-pointer ${
+                currentPaneId === pane.pane_id ? 'bg-blue-600 bg-opacity-30 border-l-4 border-l-blue-500' : isPinned ? 'bg-yellow-900 bg-opacity-20' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex gap-2 flex-1 min-w-0">
+                  <div className={`w-10 h-10 rounded-full ${getAvatarColor(pane.pane_id)} bg-opacity-20 flex items-center justify-center text-xl flex-shrink-0`}>
+                    {getAvatar(pane.pane_id, pane.agent_type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-sm font-medium text-vsc-text truncate">{pane.title || pane.pane_id}</div>
+                      {pane.agent_type && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-purple-600 bg-opacity-30 text-purple-400 flex-shrink-0">
+                          {pane.agent_type}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-vsc-text-secondary">
+                      <span className="truncate">{pane.pane_id}</span>
+                      {pane.status && (
+                        <>
+                          <span>•</span>
+                          <span className={`flex-shrink-0 ${
+                            pane.status === 'idle' ? 'text-green-400' :
+                            pane.status === 'thinking' ? 'text-yellow-400' :
+                            pane.status === 'wait_auth' ? 'text-red-400' :
+                            'text-gray-400'
+                          }`}>
+                            {pane.status}
+                          </span>
+                        </>
+                      )}
+                      {pane.updated_at && (
+                        <>
+                          <span>•</span>
+                          <span className="flex-shrink-0">{formatTimeAgo(pane.updated_at)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={(e) => togglePin(pane.pane_id, e)}
+                    className="px-2 py-1 text-xs text-vsc-text-secondary hover:text-vsc-accent"
+                    title={isPinned ? '取消置顶' : '置顶'}
+                  >
+                    {isPinned ? '📌' : '📍'}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirm({paneId: pane.pane_id, title: pane.title || pane.pane_id});
+                    }}
+                    className="px-2 py-1 text-xs text-red-500 hover:text-red-400"
+                    title="删除"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      {createDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={() => setCreateDialog(false)}>
+          <div className="bg-vsc-bg border border-vsc-border rounded p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-vsc-text font-semibold mb-3">创建新 Agent</h3>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="输入 Agent 标题..."
+              className="w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm rounded px-3 py-2 mb-4 focus:outline-none focus:border-vsc-accent"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCreateDialog(false);
+                  setNewTitle('');
+                }}
+                className="px-4 py-1.5 text-sm bg-vsc-bg-secondary hover:bg-vsc-bg-active text-vsc-text rounded"
+              >
+                取消
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCreate();
+                }}
+                disabled={!newTitle.trim()}
+                className="px-4 py-1.5 text-sm bg-vsc-button hover:bg-vsc-button-hover disabled:bg-vsc-bg-active disabled:cursor-not-allowed text-white rounded"
+              >
+                创建
+              </button>
+            </div>
+          </div>
         </div>
-      ))}
+      )}
+      
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-vsc-bg border border-vsc-border rounded p-4 max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-vsc-text font-semibold mb-2">确认删除</h3>
+            <p className="text-vsc-text-secondary text-sm mb-4">
+              确定要删除 <span className="text-vsc-text font-medium">{deleteConfirm.title}</span> 吗？
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirm(null);
+                }}
+                className="px-4 py-1.5 text-sm bg-vsc-bg-secondary hover:bg-vsc-bg-active text-vsc-text rounded"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded"
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 };
 
