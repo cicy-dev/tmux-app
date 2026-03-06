@@ -49,10 +49,6 @@ interface AppContextType {
   // UI State
   loading: boolean;
   error: string | null;
-  
-  // Global Dialog
-  showDialog: (content: ReactNode, onConfirm?: () => void, onCancel?: () => void) => void;
-  hideDialog: () => void;
   setError: (error: string | null) => void;
 }
 
@@ -68,12 +64,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [globalVar, setGlobalVar] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Dialog state
-  const [dialogVisible, setDialogVisible] = useState(false);
-  const [dialogContent, setDialogContent] = useState<ReactNode>(null);
-  const [dialogOnConfirm, setDialogOnConfirm] = useState<(() => void) | undefined>();
-  const [dialogOnCancel, setDialogOnCancel] = useState<(() => void) | undefined>();
 
   // Initialize token, pane, and API client
   useEffect(() => {
@@ -222,20 +212,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [api]);
 
-  const showDialog = useCallback((content: ReactNode, onConfirm?: () => void, onCancel?: () => void) => {
-    setDialogContent(content);
-    setDialogOnConfirm(() => onConfirm);
-    setDialogOnCancel(() => onCancel);
-    setDialogVisible(true);
-  }, []);
-
-  const hideDialog = useCallback(() => {
-    setDialogVisible(false);
-    setDialogContent(null);
-    setDialogOnConfirm(undefined);
-    setDialogOnCancel(undefined);
-  }, []);
-
   const value: AppContextType = {
     token,
     isAuthenticated: !!token,
@@ -258,8 +234,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateGlobalVar,
     loading,
     error,
-    showDialog,
-    hideDialog,
     setError,
   };
 
@@ -276,26 +250,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider value={value}>
       {children}
-      {/* Global Dialog */}
-      {dialogVisible && (
-        <div style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 2147483647, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          <div style={{backgroundColor: '#1e1e1e', borderRadius: '8px', padding: '24px', minWidth: '400px', maxWidth: '600px'}}>
-            <div style={{marginBottom: '20px'}}>{dialogContent}</div>
-            <div style={{display: 'flex', gap: '8px', justifyContent: 'flex-end'}}>
-              {dialogOnCancel && (
-                <button onClick={() => { dialogOnCancel(); hideDialog(); }} style={{padding: '8px 16px', backgroundColor: '#2a2d2e', color: '#cccccc', border: '1px solid #474747', borderRadius: '4px', cursor: 'pointer'}}>
-                  Cancel
-                </button>
-              )}
-              {dialogOnConfirm && (
-                <button onClick={() => { dialogOnConfirm(); hideDialog(); }} style={{padding: '8px 16px', backgroundColor: '#0e639c', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
-                  Confirm
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </AppContext.Provider>
   );
 };

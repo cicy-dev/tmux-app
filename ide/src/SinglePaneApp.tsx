@@ -15,6 +15,7 @@ import apiService from './services/api';
 import { AppSettings, Position, Size } from './types';
 import { WebFrame } from './components/WebFrame';
 import { useApp } from './contexts/AppContext';
+import { useDialog } from './contexts/DialogContext';
 
 // Read URL query params
 const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4])
@@ -46,6 +47,7 @@ declare global {
 
 const App: React.FC = () => {
   const { currentPaneId, allPanes, currentPane, paneDetail, api, setPaneDetail, updatePane, selectPane, globalVar, loadGlobalVar, updateGlobalVar } = useApp();
+  const { openDialog, closeDialog, confirm: confirmDialog, activeDialog } = useDialog();
   const MODE = "ttyd";
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -97,13 +99,9 @@ const App: React.FC = () => {
   const [showCorrectionResult, setShowCorrectionResult] = useState(false);
   const [correctionData, setCorrectionData] = useState<[string, string] | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showDesktopDialog, setShowDesktopDialog] = useState(false);
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
-
   const [isInteracting, setIsInteracting] = useState(false);
   const [editingPane, setEditingPane] = useState<EditPaneData | null>(null);
   const [isSavingPane, setIsSavingPane] = useState(false);
-  const [showAddPanel, setShowAddPanel] = useState(false);
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
   const [agentTabs, setAgentTabs] = useState<Array<{paneId: string, title:string,url: string, closable: boolean}>>([]);
@@ -198,21 +196,12 @@ const App: React.FC = () => {
   };
 
   // Disable iframe pointer-events when any overlay dialog is open (iframes ignore z-index)
-  useEffect(() => {
-    const hasOverlay = showAddPanel || showDesktopDialog || showRemoveConfirm;
-    document.querySelectorAll('iframe').forEach((el) => {
-      (el as HTMLElement).style.pointerEvents = hasOverlay ? 'none' : '';
-    });
-  }, [showAddPanel, showDesktopDialog, showRemoveConfirm]);
-
   // Close correction panel and history with Esc key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showAddPanel) {
-          setShowAddPanel(false);
-        } else if (showDesktopDialog) {
-          setShowDesktopDialog(false);
+        if (activeDialog) {
+          closeDialog();
         } else if (showCorrectionResult) {
           setShowCorrectionResult(false);
         } else if (showHistoryOverlay) {
@@ -224,7 +213,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAddPanel, showCorrectionResult, showHistoryOverlay, showDesktopDialog, showCommonPromptOverlay]);
+  }, [activeDialog, showCorrectionResult, showHistoryOverlay, showCommonPromptOverlay]);
 
   // Listen for common prompt event
   useEffect(() => {
@@ -1102,7 +1091,14 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={() => {
-                          setShowRemoveConfirm(true);
+                          confirmDialog(
+                            `Remove agent ${displayPaneId}? This will delete the pane.`,
+                            async () => {
+                              await apiService.deleteAgent(displayPaneId);
+                              const otherPane = allPanes.find(p => p.pane_id !== displayPaneId);
+                              if (otherPane) selectPane(otherPane.pane_id);
+                            }
+                          );
                           setShowMoreMenu(false);
                         }} 
                         className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-vsc-bg-hover flex items-center gap-2"
@@ -1508,12 +1504,12 @@ const App: React.FC = () => {
       )}
 
       {/* Desktop Dialog */}
-      {showDesktopDialog && (
-        <div className="fixed inset-0 bg-black/80 z-[9999999] flex items-center justify-center" onClick={() => setShowDesktopDialog(false)}>
+      {activeDialog === 'desktop' && (
+        <div className="fixed inset-0 bg-black/80 z-[9999999] flex items-center justify-center" onClick={closeDialog}>
           <div className="w-full h-full flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-3">
               <span className="text-sm text-vsc-text font-medium">Desktop</span>
-              <button onClick={() => setShowDesktopDialog(false)} className="p-1 hover:bg-vsc-bg-hover rounded text-vsc-text-secondary hover:text-vsc-text">
+              <button onClick={closeDialog} className="p-1 hover:bg-vsc-bg-hover rounded text-vsc-text-secondary hover:text-vsc-text">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -1522,23 +1518,9 @@ const App: React.FC = () => {
         </div>
       )}
       
-      {showRemoveConfirm && (
-        <ConfirmDialog
-          message={`Remove agent ${displayPaneId}? This will delete the pane.`}
-          onConfirm={async () => {
-            await apiService.deleteAgent(displayPaneId);
-            const otherPane = allPanes.find(p => p.pane_id !== displayPaneId);
-            if (otherPane) {
-              selectPane(otherPane.pane_id);
-            }
-            setShowRemoveConfirm(false);
-          }}
-          onCancel={() => setShowRemoveConfirm(false)}
-        />
-      )}
       
       {/* Add Agent Dialog - Top Level */}
-      {showAddPanel && (
+      {activeDialog === 'addAgent' && (
         <div style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 9999999, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
           <div style={{width: '90%', height: '90%', backgroundColor: '#1e1e1e', borderRadius: '8px', overflow: 'hidden'}}>
             <AgentsRightView token={token} existingTabs={agentTabs.map(t => t.paneId)} onAddAgent={(paneId, title,url) => {
@@ -1547,7 +1529,7 @@ const App: React.FC = () => {
                 setAgentTabs([...agentTabs, {paneId,title, url, closable: true}]);
               }
               setActiveAgentTab(paneId);
-              setShowAddPanel(false);
+              closeDialog();
             }} />
           </div>
         </div>
@@ -1587,13 +1569,12 @@ const MiddlePanel: React.FC = () => {
 
 const LeftSidePanel: React.FC = () => {
   const { allPanes, currentPaneId, selectPane, paneDetail } = useApp();
+  const { openDialog, closeDialog, activeDialog, dialogData, confirm: confirmDlg } = useDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const [pinnedPanes, setPinnedPanes] = useState<string[]>(() => {
     const saved = localStorage.getItem('pinnedPanes');
     return saved ? JSON.parse(saved) : [];
   });
-  const [deleteConfirm, setDeleteConfirm] = useState<{paneId: string; title: string} | null>(null);
-  const [createDialog, setCreateDialog] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   
   // Listen to pin changes from middle bar
@@ -1638,15 +1619,13 @@ const LeftSidePanel: React.FC = () => {
     if (!newTitle.trim()) return;
     // TODO: 调用创建 API
     console.log('Create pane with title:', newTitle);
-    setCreateDialog(false);
+    closeDialog();
     setNewTitle('');
   };
   
-  const handleDelete = async () => {
-    if (!deleteConfirm) return;
+  const handleDelete = async (paneId: string) => {
     // TODO: 调用删除 API
-    console.log('Delete pane:', deleteConfirm.paneId);
-    setDeleteConfirm(null);
+    console.log('Delete pane:', paneId);
   };
   
   const filteredPanes = allPanes.filter((pane: any) => 
@@ -1674,7 +1653,7 @@ const LeftSidePanel: React.FC = () => {
           className="flex-1 bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm rounded px-3 py-1.5 focus:outline-none focus:border-vsc-accent"
         />
         <button
-          onClick={() => setCreateDialog(true)}
+          onClick={() => openDialog('createAgent')}
           className="bg-vsc-button hover:bg-vsc-button-hover text-white px-3 py-1.5 rounded text-sm"
           title="创建新 Agent"
         >
@@ -1740,8 +1719,8 @@ const LeftSidePanel: React.FC = () => {
         })}
       </div>
       
-      {createDialog && ReactDOM.createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999]" onClick={() => setCreateDialog(false)}>
+      {activeDialog === 'createAgent' && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999]" onClick={closeDialog}>
           <div className="bg-vsc-bg border border-vsc-border rounded p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-vsc-text font-semibold mb-3">创建新 Agent</h3>
             <input
@@ -1755,53 +1734,17 @@ const LeftSidePanel: React.FC = () => {
             />
             <div className="flex justify-end gap-2">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCreateDialog(false);
-                  setNewTitle('');
-                }}
+                onClick={() => { closeDialog(); setNewTitle(''); }}
                 className="px-4 py-1.5 text-sm bg-vsc-bg-secondary hover:bg-vsc-bg-active text-vsc-text rounded"
               >
                 取消
               </button>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCreate();
-                }}
+                onClick={handleCreate}
                 disabled={!newTitle.trim()}
                 className="px-4 py-1.5 text-sm bg-vsc-button hover:bg-vsc-button-hover disabled:bg-vsc-bg-active disabled:cursor-not-allowed text-white rounded"
               >
                 创建
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-      
-      {deleteConfirm && ReactDOM.createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999]" onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-vsc-bg border border-vsc-border rounded p-4 max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-vsc-text font-semibold mb-2">确认删除</h3>
-            <p className="text-vsc-text-secondary text-sm mb-4">
-              确定要删除 <span className="text-vsc-text font-medium">{deleteConfirm.title}</span> 吗？
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteConfirm(null);
-                }}
-                className="px-4 py-1.5 text-sm bg-vsc-bg-secondary hover:bg-vsc-bg-active text-vsc-text rounded"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded"
-              >
-                删除
               </button>
             </div>
           </div>
