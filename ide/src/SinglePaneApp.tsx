@@ -11,7 +11,8 @@ import { AgentsListView } from './components/AgentsListView';
 import { AgentsRightView } from './components/AgentsRightView';
 import { CaptureDialog } from './components/CaptureDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { getApiUrl,API_BASE } from './services/apiUrl';
+import config, { urls } from './config';
+import { getApiUrl } from './services/apiUrl';
 import { AppSettings, Position, Size } from './types';
 import { WebFrame } from './components/WebFrame';
 import { useApp } from './contexts/AppContext';
@@ -168,7 +169,7 @@ const App: React.FC = () => {
     
     // Path is different, check if exists
     try {
-      const res = await fetch(`${API_BASE}/api/utils/file/exists?path=${encodeURIComponent(path)}`, {
+      const res = await fetch(`${config.apiBase}/api/utils/file/exists?path=${encodeURIComponent(path)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -179,7 +180,7 @@ const App: React.FC = () => {
         return;
       }
       // Reload webframe (iframe or webview)
-      const newUrl = `https://code.cicy.de5.net/?folder=${encodeURIComponent(path)}`;
+      const newUrl = urls.codeServer(path);
       console.log('Setting new URL:', newUrl);
       
       // Stop current loading for webview
@@ -277,7 +278,7 @@ const App: React.FC = () => {
 
         try {
           const paneIdToLoad = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
-          const res = await fetch(`${API_BASE}/api/ttyd/config/${encodeURIComponent(paneIdToLoad)}`, {
+          const res = await fetch(`${config.apiBase}/api/ttyd/config/${encodeURIComponent(paneIdToLoad)}`, {
             headers: { 'Accept': 'application/json' }
           });
           if (res.ok) {
@@ -307,7 +308,7 @@ const App: React.FC = () => {
             
             // Fetch bound agents
             try {
-              const agentsRes = await fetch(`${API_BASE}/api/agents/pane/${encodeURIComponent(CurrentPaneId)}`, {
+              const agentsRes = await fetch(`${config.apiBase}/api/agents/pane/${encodeURIComponent(CurrentPaneId)}`, {
                 headers: { 'Authorization': `Bearer ${urlToken}` }
               });
               if (agentsRes.ok) {
@@ -366,7 +367,7 @@ const App: React.FC = () => {
       setAgentTabs([{
         paneId: displayPaneId,
         title: displayPaneTitle,
-        url: `https://ttyd-proxy.cicy.de5.net/ttyd/${displayPaneId}/?token=${token}&mode=1`,
+        url: urls.ttyd(displayPaneId, token),
         closable: false
       }]);
     }
@@ -376,7 +377,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!token) return;
     
-    fetch(`${API_BASE}/api/auth/verify-token`, {
+    fetch(`${config.apiBase}/api/auth/verify-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token })
@@ -404,7 +405,7 @@ const App: React.FC = () => {
   // Reload config when switching to Preview tab
   useEffect(() => {
     if (activeTab === 'Preview' && token) {
-      fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(CurrentPaneId)}`, {
+      fetch(`${config.apiBase}/api/tmux/panes/${encodeURIComponent(CurrentPaneId)}`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       })
         .then(res => res.ok ? res.json() : null)
@@ -572,7 +573,7 @@ const App: React.FC = () => {
           const fd = new FormData();
           fd.append('file', blob, 'voice.webm');
           fd.append('engine', 'google');
-          const r = await fetch('https://g-15003.cicy.de5.net/stt', { method: 'POST', body: fd });
+          const r = await fetch(urls.stt(), { method: 'POST', body: fd });
           const d = await r.json();
           if (d.text) {
             voiceTranscriptRef.current = d.text;
@@ -601,7 +602,7 @@ const App: React.FC = () => {
     setIsCapturing(true);
     const targetPane = pane_id || displayPaneId;
     try {
-      const res = await fetch(`${API_BASE}/api/tmux/capture_pane`, {
+      const res = await fetch(`${config.apiBase}/api/tmux/capture_pane`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ pane_id: targetPane, lines: lines || 100 })
@@ -620,14 +621,14 @@ const App: React.FC = () => {
     setIsRestarting(true);
     try {
       const paneIdClean = targetPane.replace(':main.0', '');
-      await fetch(`${API_BASE}/api/tmux/panes/${encodeURIComponent(paneIdClean)}/restart`, {
+      await fetch(`${config.apiBase}/api/tmux/panes/${encodeURIComponent(paneIdClean)}/restart`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       for (let i = 0; i < 30; i++) {
         await new Promise(r => setTimeout(r, 1000));
         try {
-          const res = await fetch(`${API_BASE}/api/ttyd/status/${encodeURIComponent(paneIdClean)}`, {
+          const res = await fetch(`${config.apiBase}/api/ttyd/status/${encodeURIComponent(paneIdClean)}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {
@@ -684,7 +685,7 @@ const App: React.FC = () => {
     try {
       // Add :main.0 suffix if not present
       const paneIdToSave = CurrentPaneId.includes(':') ? CurrentPaneId : `${CurrentPaneId}:main.0`;
-      const res = await fetch(`${API_BASE}/api/ttyd/config/${encodeURIComponent(paneIdToSave)}`, {
+      const res = await fetch(`${config.apiBase}/api/ttyd/config/${encodeURIComponent(paneIdToSave)}`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToSave),
@@ -811,7 +812,7 @@ const App: React.FC = () => {
                       }}
                     />
                   </div>
-                  <WebFrame codeServer loading="lazy" src={`https://code.cicy.de5.net/?folder=${paneWorkspace}`} className="code-server-iframe w-full flex-1" />
+                  <WebFrame codeServer loading="lazy" src={urls.codeServer(paneWorkspace)} className="code-server-iframe w-full flex-1" />
                 </div>
                 {isDragging && <div className="absolute inset-0 z-20"></div>}
               </div>
@@ -1157,7 +1158,7 @@ const App: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={() => {
-                          window.open(`https://ttyd-proxy.cicy.de5.net/ttyd/${displayPaneId}/?token=${token}`, '_blank');
+                          window.open(urls.ttydOpen(displayPaneId, token), '_blank');
                           setShowMoreMenu(false);
                         }} 
                         className="w-full px-3 py-2 text-left text-xs text-vsc-text hover:bg-vsc-bg-hover flex items-center gap-2"
@@ -1279,7 +1280,7 @@ const App: React.FC = () => {
                 <WebFrame
                   ref={paneId === displayPaneId ? mainIframeRef : undefined}
                   loading="lazy"
-                  src={`https://ttyd-proxy.cicy.de5.net/ttyd/${paneId}/?token=${token}&mode=1`}
+                  src={urls.ttyd(paneId, token)}
                   className="w-full h-full"
                   codeServer={true}
                 />
@@ -1582,7 +1583,7 @@ const App: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <iframe src={`https://desktop.cicy.de5.net/?token=${token}`} className="flex-1 w-full border-none" />
+            <iframe src={urls.desktop(token)} className="flex-1 w-full border-none" />
           </div>
         </div>
       )}
@@ -1645,7 +1646,7 @@ const MiddlePanel: React.FC = () => {
       </div>
       <div className="h-[calc(100%-40px)]">
         <WebFrame
-          src={`https://ttyd-proxy.cicy.de5.net/ttyd/${currentPane.pane_id}/?token=${token}&mode=1`}
+          src={urls.ttyd(currentPane.pane_id, token)}
           className="w-full h-full"
         />
       </div>

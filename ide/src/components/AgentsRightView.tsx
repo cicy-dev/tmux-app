@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getApiUrl } from '../services/apiUrl';
+import { urls } from '../config';
 
 interface AgentsRightViewProps {
   token: string;
@@ -59,7 +60,7 @@ export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAg
     });
 
   const handleAgentClick = (agent: Agent) => {
-    const url = `https://ttyd-proxy.cicy.de5.net/ttyd/${agent.pane_id}/?token=${token}&mode=1`;
+    const url = urls.ttyd(agent.pane_id, token);
     onAddAgent(agent.pane_id,agent.title, url);
   };
 
@@ -106,7 +107,7 @@ export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAg
                 <div 
                   key={agent.pane_id || idx}
                   onClick={() => {
-                    const url = `https://ide.cicy.de5.net/ttyd/${agent.pane_id}/?token=${token}`;
+                    const url = urls.idePane(agent.pane_id, token);
                     window.open(url, '_blank');
                   }}
                   className="group relative flex items-center gap-3 bg-vsc-bg-secondary border border-vsc-border rounded-lg p-3 cursor-pointer hover:border-vsc-button hover:bg-vsc-bg-hover transition-all h-[80px]"

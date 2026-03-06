@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { getApiUrl } from '../services/apiUrl';
+import { urls } from '../config';
 import { WebFrame } from './WebFrame';
 
 interface Agent {
@@ -268,7 +269,7 @@ export const AgentsListView: React.FC<AgentsListViewProps> = ({ paneId, token, t
               <WebFrame
                 loading="lazy"
                 key={iframeKeys[agent.name] || 0}
-                src={`https://ttyd-proxy.cicy.de5.net/ttyd/${agent.name}/?token=${token}&mode=1`}
+                src={urls.ttyd(agent.name, token)}
                 className="w-full h-full rounded align-top"
                 style={{verticalAlign: 'top'}}
               />
