@@ -191,7 +191,7 @@ const MiddleContent: React.FC<MiddleContentProps> = ({
         )}
         {visitedPanes.filter(id => id && id !== '' && id !== 'undefined').map((paneId) => (
           <div key={`terminal-${paneId}`} className="absolute inset-0" style={{ backgroundColor:"#474747", zIndex: paneId === displayPaneId ? 1 : 0, visibility: paneId === displayPaneId ? 'visible' : 'hidden' }}>
-            <WebFrame ref={paneId === displayPaneId ? mainIframeRef : undefined} loading="lazy" src={urls.ttyd(paneId, token)} className="w-full h-full" codeServer={true} />
+            <WebFrame ref={paneId === displayPaneId ? mainIframeRef : undefined} loading="lazy" src={urls.ttyd(paneId, token)} className="w-full h-full" />
           </div>
         ))}
         <div id="main-middle-mask" className="ttyd-mask absolute inset-0 bg-transparent z-10" style={{display: 'none', pointerEvents: 'auto'}} onClick={(e) => { window.dispatchEvent(new CustomEvent('selectPane', { detail: { paneId: displayPaneId } })); (e.target as HTMLElement).style.display = 'none'; }} />
