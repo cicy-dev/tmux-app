@@ -290,10 +290,17 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
 
 const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDragging: boolean, setBoundAgents: (a: string[]) => void}> = ({paneId, token, isDragging, setBoundAgents}) => {
   const { allPanes } = useApp();
+  const { setToast } = usePane();
   const [agents, setAgents] = useState<any[]>([]);
   const [selectedAgent, setSelectedAgent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [cols, setCols] = useState<1|2>(() => (localStorage.getItem('agents_cols') === '1' ? 1 : 2));
+  const [heights, setHeights] = useState<Record<number, number>>(() => {
+    const saved = localStorage.getItem('agents_heights');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [resizingId, setResizingId] = useState<number | null>(null);
 
   const fetchAgents = async () => {
     setLoading(true);
@@ -315,7 +322,35 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
     try { await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent }); fetchAgents(); setSelectedAgent(''); } catch (err) { alert(`Error: ${err}`); }
   };
 
+  const handleCreateAndBind = async () => {
+    setCreating(true);
+    try {
+      const { data } = await apiService.createPane({ title: `agent-${Date.now().toString(36)}` });
+      const newPaneId = data.pane_id || data.name;
+      if (newPaneId) {
+        await apiService.bindAgent({ pane_id: paneId, agent_name: newPaneId });
+        fetchAgents();
+        setToast('Agent created & bound');
+        setTimeout(() => setToast(null), 2000);
+      }
+    } catch (err) { setToast(`Create failed: ${err}`); setTimeout(() => setToast(null), 3000); }
+    finally { setCreating(false); }
+  };
+
   const unbindable = allPanes.filter((p: any) => p.pane_id !== paneId && !agents.find((a: any) => a.name === p.pane_id));
+
+  const defaultH = cols === 1 ? 300 : 200;
+
+  const startResize = (agentId: number, startY: number, startH: number) => {
+    setResizingId(agentId);
+    const onMove = (ev: MouseEvent) => {
+      const newH = Math.max(80, startH + ev.clientY - startY);
+      setHeights(prev => { const u = { ...prev, [agentId]: newH }; localStorage.setItem('agents_heights', JSON.stringify(u)); return u; });
+    };
+    const onUp = () => { setResizingId(null); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   return (
     <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column'}}>
@@ -328,7 +363,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
           ))}
         </select>
         <button onClick={handleBind} disabled={!selectedAgent} className="px-1.5 py-0.5 text-[11px] bg-vsc-button hover:bg-vsc-button-hover disabled:opacity-40 text-white rounded" title="Bind selected agent">+Bind</button>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('openAddAgent'))} className="px-1.5 py-0.5 text-[11px] bg-[#238636] hover:bg-[#2ea043] text-white rounded" title="Create & bind new agent">+New</button>
+        <button onClick={handleCreateAndBind} disabled={creating} className="px-1.5 py-0.5 text-[11px] bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white rounded" title="Create new agent & bind to current pane">{creating ? '...' : '+New'}</button>
         <div className="flex-1" />
         <button onClick={() => { const c = cols === 1 ? 2 : 1; setCols(c as 1|2); localStorage.setItem('agents_cols', String(c)); }} className="p-0.5 text-[11px] bg-vsc-bg-secondary border border-vsc-border text-vsc-text-secondary rounded hover:text-vsc-text" title="Toggle columns">
           {cols === 1 ? '⊞' : '▣'}
@@ -341,7 +376,9 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
         <div className="flex-1 flex items-center justify-center text-vsc-text-secondary text-xs">No agents bound</div>
       ) : (
         <div className="flex-1 overflow-auto" style={{display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: '2px', alignContent: 'start'}}>
-          {agents.map((agent: any) => (
+          {agents.map((agent: any) => {
+            const h = heights[agent.id] || defaultH;
+            return (
             <div key={agent.id} className="flex flex-col border-b border-vsc-border">
               {/* Agent header */}
               <div className="flex items-center gap-1 px-2 py-1 bg-vsc-bg-secondary">
@@ -354,14 +391,19 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
                 </button>
               </div>
               {/* Agent ttyd iframe */}
-              <div className="relative" style={{height: cols === 1 ? '300px' : '200px'}}>
+              <div className="relative" style={{height: `${h}px`}}>
                 <WebFrame src={urls.ttyd(agent.name, token || '', 1)} className="w-full h-full" />
-                {isDragging && <div className="absolute inset-0 z-20" />}
+                {(isDragging || resizingId !== null) && <div className="absolute inset-0 z-20" />}
               </div>
+              {/* Resize handle */}
+              <div className="h-1 bg-vsc-border hover:bg-vsc-accent cursor-row-resize flex-shrink-0" onMouseDown={(e) => { e.preventDefault(); startResize(agent.id, e.clientY, h); }} />
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
+      {/* Overlay during agent resize */}
+      {resizingId !== null && <div className="fixed inset-0 z-[9999] cursor-row-resize" />}
     </div>
   );
 };

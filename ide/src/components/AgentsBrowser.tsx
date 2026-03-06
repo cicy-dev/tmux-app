@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import apiService from '../services/api';
 import { urls } from '../config';
 
-interface AgentsRightViewProps {
+interface AgentsBrowserProps {
   token: string;
   onAddAgent: (paneId: string, title:string,url: string) => void;
   existingTabs: string[];
@@ -16,7 +16,7 @@ interface Agent {
   [key: string]: any;
 }
 
-export const AgentsRightView: React.FC<AgentsRightViewProps> = ({ token, onAddAgent, existingTabs, onNewAgent }) => {
+export const AgentsBrowser: React.FC<AgentsBrowserProps> = ({ token, onAddAgent, existingTabs, onNewAgent }) => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

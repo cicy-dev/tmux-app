@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { CommandPanelHandle } from './components/CommandPanel';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
-import { AgentsRightView } from './components/AgentsRightView';
+import { AgentsBrowser } from './components/AgentsBrowser';
 import apiService from './services/api';
 import { useDialog } from './contexts/DialogContext';
 import { usePane } from './contexts/PaneContext';
@@ -13,7 +13,7 @@ import RightSidePanel from './components/RightSidePanel';
 import MainMiddlePanel from './components/MainMiddlePanel';
 
 const App: React.FC = () => {
-  const { closeDialog, activeDialog, openDialog } = useDialog();
+  const { closeDialog, activeDialog } = useDialog();
   const {
     displayPaneId, token, setToken, isCheckingAuth, hasPermission,
     ttydWidth, setTtydWidth, isDragging, setIsDragging,
@@ -60,13 +60,6 @@ const App: React.FC = () => {
     return () => window.removeEventListener('pinnedPanesChanged', handlePinChange);
   }, []);
 
-  // Listen to openAddAgent event
-  useEffect(() => {
-    const handler = () => openDialog('addAgent');
-    window.addEventListener('openAddAgent', handler);
-    return () => window.removeEventListener('openAddAgent', handler);
-  }, [openDialog]);
-
   if (isCheckingAuth) return (
     <div className="bg-vsc-bg w-screen h-screen flex items-center justify-center">
       <Loader2 size={48} className="text-vsc-accent animate-spin" />
@@ -92,8 +85,8 @@ const App: React.FC = () => {
 
         {!rightCollapsed && (
           <div id="drag" 
-            className="absolute inset-y-0 w-1 bg-vsc-border hover:bg-vsc-accent cursor-col-resize z-10"
-            style={{left: `calc(${leftW}px + ${ttydWidth}px)`}}
+            className="absolute inset-y-0 bg-transparent hover:bg-vsc-accent cursor-col-resize z-10"
+            style={{left: `calc(${leftW}px + ${ttydWidth}px - 2px)`, width: '5px'}}
             onMouseDown={(e) => {
               e.preventDefault();
               setIsDragging(true);
@@ -105,6 +98,9 @@ const App: React.FC = () => {
             }}
           ></div>
         )}
+
+        {/* Global drag overlay to prevent iframes from stealing events */}
+        {isDragging && <div className="fixed inset-0 z-[9999] cursor-col-resize" />}
 
         <MainMiddlePanel ttydWidth={rightCollapsed ? window.innerWidth - leftW : ttydWidth} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} leftWidth={leftW} leftCollapsed={leftCollapsed} rightCollapsed={rightCollapsed} onToggleLeft={() => setLeftCollapsed(!leftCollapsed)} onToggleRight={() => setRightCollapsed(!rightCollapsed)} />
       </div>
@@ -129,7 +125,7 @@ const App: React.FC = () => {
       {activeDialog === 'addAgent' && (
         <div style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 9999999, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
           <div style={{width: '90%', height: '90%', backgroundColor: '#1e1e1e', borderRadius: '8px', overflow: 'hidden'}}>
-            <AgentsRightView token={token} existingTabs={agentTabs.map(t => t.paneId)} onAddAgent={(paneId, title, url) => {
+            <AgentsBrowser token={token} existingTabs={agentTabs.map(t => t.paneId)} onAddAgent={(paneId, title, url) => {
               if (!agentTabs.find(t => t.paneId === paneId)) setAgentTabs([...agentTabs, {paneId, title, url, closable: true}]);
               setActiveAgentTab(paneId);
               closeDialog();
