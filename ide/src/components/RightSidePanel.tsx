@@ -21,7 +21,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
 
   const [paneWorkspace, setPaneWorkspace] = useState<string>(() => {
     const cached = localStorage.getItem(`codeserver_folder_${displayPaneId}`);
-    return cached || paneDetail?.workspace || '';
+    return cached || paneDetail?.workspace || '/home/w3c_offical';
   });
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
