@@ -311,15 +311,23 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
   });
   const [resizingId, setResizingId] = useState<number | null>(null);
 
-  const fetchAgents = async () => {
-    setLoading(true);
+  const fetchAgents = async (incremental = false) => {
+    if (!incremental) setLoading(true);
     try {
       const { data } = await apiService.getAgentsByPane(paneId);
       const withTitles = data.map((a: any) => {
         const info = allPanes.find((p: any) => p.pane_id === a.name);
         return { ...a, title: info?.title || a.name };
       });
-      setAgents(withTitles);
+      // Incremental: only add new / remove old, keep existing refs stable
+      setAgents(prev => {
+        if (!incremental) return withTitles;
+        const prevIds = new Set(prev.map((a: any) => a.id));
+        const newIds = new Set(withTitles.map((a: any) => a.id));
+        const kept = prev.filter((a: any) => newIds.has(a.id));
+        const added = withTitles.filter((a: any) => !prevIds.has(a.id));
+        return [...kept, ...added];
+      });
       setBoundAgents(data.map((a: any) => a.name));
     } catch {} finally { setLoading(false); }
   };
@@ -328,7 +336,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
 
   const handleBind = async () => {
     if (!selectedAgent) return;
-    try { await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent }); fetchAgents(); setSelectedAgent(''); } catch (err) { alert(`Error: ${err}`); }
+    try { await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent }); fetchAgents(true); setSelectedAgent(''); } catch (err) { alert(`Error: ${err}`); }
   };
 
   const handleCreateAndBind = async () => {
@@ -338,12 +346,17 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
       const newPaneId = data.pane_id || data.name;
       if (newPaneId) {
         await apiService.bindAgent({ pane_id: paneId, agent_name: newPaneId });
-        fetchAgents();
+        fetchAgents(true);
         setToast('Agent created & bound');
         setTimeout(() => setToast(null), 2000);
       }
     } catch (err) { setToast(`Create failed: ${err}`); setTimeout(() => setToast(null), 3000); }
     finally { setCreating(false); }
+  };
+
+  const handleUnbind = async (agentId: number) => {
+    setAgents(prev => prev.filter(a => a.id !== agentId));
+    try { await apiService.unbindAgent(agentId); fetchAgents(true); } catch {}
   };
 
   const unbindable = allPanes.filter((p: any) => p.pane_id !== paneId && !agents.find((a: any) => a.name === p.pane_id));
@@ -384,7 +397,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
       ) : agents.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-vsc-text-secondary text-xs">No agents bound</div>
       ) : (
-        <div className="flex-1 overflow-auto" style={{display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: '2px', alignContent: 'start'}}>
+        <div className="flex-1 overflow-auto pr-10" style={{display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: '2px', alignContent: 'start'}}>
           {agents.map((agent: any) => {
             const h = heights[agent.id] || defaultH;
             return (
@@ -395,7 +408,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
                 <button onClick={() => window.open(urls.ttydOpen(agent.name, token || ''), '_blank')} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text" title="Open in new tab">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 </button>
-                <button onClick={async () => { try { await apiService.unbindAgent(agent.id); fetchAgents(); } catch {} }} className="p-0.5 rounded text-red-400 hover:text-red-300" title="Unbind">
+                <button onClick={() => handleUnbind(agent.id)} className="p-0.5 rounded text-red-400 hover:text-red-300" title="Unbind">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
