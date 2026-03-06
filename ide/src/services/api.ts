@@ -12,7 +12,7 @@ http.interceptors.request.use((cfg) => {
 const api = {
   // Auth
   verifyToken:      ()                                     => http.post('/api/auth/verify-token'),
-  verifyAuth:       (token: string)                        => http.post('/api/auth/verify', { token }),
+  verifyAuth:       (token: string)                        => http.get('/api/auth/verify', { headers: { Authorization: `Bearer ${token}` } }),
 
   // Panes
   getPanes:         ()                                     => http.get('/api/tmux'),
