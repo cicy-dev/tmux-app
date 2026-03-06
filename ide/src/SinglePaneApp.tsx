@@ -15,6 +15,7 @@ import { WebFrame } from './components/WebFrame';
 import { useApp } from './contexts/AppContext';
 import { useDialog } from './contexts/DialogContext';
 import { usePane } from './contexts/PaneContext';
+import { useVoice } from './contexts/VoiceContext';
 import MiddlePanel from './components/MiddlePanel';
 import LeftSidePanel from './components/LeftSidePanel';
 
@@ -72,9 +73,7 @@ const App: React.FC = () => {
   const [isSavingPane, setIsSavingPane] = useState(false);
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
-  const [isListening, setIsListening] = useState(false);
-  const voiceModeRef = useRef<'append' | 'direct'>('append');
-  const voiceTranscriptRef = useRef<string>('');
+  const { isListening, voiceMode, startRecording, stopRecording } = useVoice();
   const commandPanelRef = useRef<CommandPanelHandle>(null);
   const mainIframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -281,92 +280,6 @@ const App: React.FC = () => {
 
   const handleLogin = (newToken: string) => setToken(newToken);
 
-  // --- Voice ---
-  const voiceShouldSendRef = useRef(false);
-
-  const sendVoiceTranscript = async () => {
-    const text = voiceTranscriptRef.current.trim();
-    voiceTranscriptRef.current = '';
-    if (!text) return;
-    try {
-      await apiService.sendCommand(displayPaneId, text);
-    } catch (e) {
-      console.error('Failed to send voice command:', e);
-    }
-  };
-
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  // Pre-acquire mic permission when voice mode enabled
-  useEffect(() => {
-    if (settings.showVoiceControl) {
-      navigator.mediaDevices?.getUserMedia({ audio: true }).then(stream => {
-        mediaStreamRef.current = stream;
-        stream.getTracks().forEach(t => t.enabled = false);
-      }).catch(() => {});
-    }
-  }, [settings.showVoiceControl]);
-
-  const startVoiceRecording = async (mode: 'append' | 'direct') => {
-    voiceModeRef.current = mode;
-    voiceTranscriptRef.current = '';
-    voiceShouldSendRef.current = false;
-    try {
-      let stream = mediaStreamRef.current;
-      if (!stream || stream.getTracks().every(t => t.readyState === 'ended')) {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaStreamRef.current = stream;
-      }
-      stream.getTracks().forEach(t => t.enabled = true);
-      audioChunksRef.current = [];
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setIsListening(true);
-      setReadOnly(true);
-    } catch (e) {
-      console.error('Mic error:', e);
-      setIsListening(false);
-      setReadOnly(false);
-    }
-  };
-
-  const stopVoiceRecording = (shouldSend: boolean) => {
-    voiceShouldSendRef.current = shouldSend;
-    const recorder = mediaRecorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.onstop = async () => {
-        setIsListening(false);
-        mediaStreamRef.current?.getTracks().forEach(t => t.enabled = false);
-        try {
-          if (!voiceShouldSendRef.current) return;
-          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          if (blob.size < 100) return;
-          const fd = new FormData();
-          fd.append('file', blob, 'voice.webm');
-          fd.append('engine', 'google');
-          const { data: d } = await apiService.stt(fd);
-          if (d.text) {
-            voiceTranscriptRef.current = d.text;
-            sendVoiceTranscript();
-          }
-        } catch (e) {
-          console.error('STT error:', e);
-        } finally {
-          setReadOnly(false);
-        }
-      };
-      recorder.stop();
-    } else {
-      setIsListening(false);
-      setReadOnly(false);
-    }
-  };
-
-  
   const [tempPaneData, setTempPaneData] = useState<EditPaneData | null>(null);
 
   const handleSavePane = async () => {
@@ -1223,9 +1136,9 @@ const App: React.FC = () => {
         <VoiceFloatingButton
           initialPosition={settings.voiceButtonPosition}
           onPositionChange={pos => setSettings(prev => ({ ...prev, voiceButtonPosition: pos }))}
-          onRecordStart={() => startVoiceRecording('direct')}
-          onRecordEnd={(shouldSend) => stopVoiceRecording(shouldSend)}
-          isRecordingExternal={isListening && voiceModeRef.current === 'direct'}
+          onRecordStart={() => startRecording('direct')}
+          onRecordEnd={(shouldSend) => stopRecording(shouldSend)}
+          isRecordingExternal={isListening && voiceMode === 'direct'}
           disabled={false}
         />
         </div></div>
