@@ -85,6 +85,10 @@ const App: React.FC = () => {
     return saved ? parseInt(saved) : 0;
   });
   const [boundAgents, setBoundAgents] = useState<string[]>([]);
+  const [pinnedPanes, setPinnedPanes] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pinnedPanes');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const [historyData, setHistoryData] = useState<{history: string[], onSelect: (cmd: string) => void} | null>(null);
   const [showCorrectionResult, setShowCorrectionResult] = useState(false);
@@ -462,6 +466,16 @@ const App: React.FC = () => {
     };
     window.addEventListener('network-latency', handleLatency as EventListener);
     return () => window.removeEventListener('network-latency', handleLatency as EventListener);
+  }, []);
+
+  // Listen to pin changes
+  useEffect(() => {
+    const handlePinChange = () => {
+      const saved = localStorage.getItem('pinnedPanes');
+      setPinnedPanes(saved ? JSON.parse(saved) : []);
+    };
+    window.addEventListener('pinnedPanesChanged', handlePinChange);
+    return () => window.removeEventListener('pinnedPanesChanged', handlePinChange);
   }, []);
 
   useEffect(() => {
@@ -989,27 +1003,18 @@ const App: React.FC = () => {
                 {displayPaneId && (
                   <button
                     onClick={() => {
-                      const saved = localStorage.getItem('pinnedPanes');
-                      const pinned = saved ? JSON.parse(saved) : [];
-                      const isPinned = pinned.includes(displayPaneId);
+                      const isPinned = pinnedPanes.includes(displayPaneId);
                       const updated = isPinned 
-                        ? pinned.filter((id: string) => id !== displayPaneId)
-                        : [...pinned, displayPaneId];
+                        ? pinnedPanes.filter((id: string) => id !== displayPaneId)
+                        : [...pinnedPanes, displayPaneId];
+                      setPinnedPanes(updated);
                       localStorage.setItem('pinnedPanes', JSON.stringify(updated));
                       window.dispatchEvent(new CustomEvent('pinnedPanesChanged'));
                     }}
                     className="p-1 hover:bg-vsc-bg-hover rounded"
-                    title={(() => {
-                      const saved = localStorage.getItem('pinnedPanes');
-                      const pinned = saved ? JSON.parse(saved) : [];
-                      return pinned.includes(displayPaneId) ? 'Unpin' : 'Pin';
-                    })()}
+                    title={pinnedPanes.includes(displayPaneId) ? 'Unpin' : 'Pin'}
                   >
-                    <Pin className={`w-4 h-4 ${(() => {
-                      const saved = localStorage.getItem('pinnedPanes');
-                      const pinned = saved ? JSON.parse(saved) : [];
-                      return pinned.includes(displayPaneId) ? 'text-yellow-500 fill-yellow-500' : 'text-vsc-text-secondary';
-                    })()}`} />
+                    <Pin className={`w-4 h-4 ${pinnedPanes.includes(displayPaneId) ? 'text-yellow-500 fill-yellow-500' : 'text-vsc-text-secondary'}`} />
                   </button>
                 )}
                 <span className="text-xs text-vsc-text-secondary px-2">v0.0.3</span>
