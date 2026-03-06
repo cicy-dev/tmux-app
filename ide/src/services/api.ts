@@ -16,7 +16,7 @@ const api = {
   verifyAuth:       (token: string)                        => http.get('/api/auth/verify', { headers: { Authorization: `Bearer ${token}` } }),
 
   // Panes
-  getPanes:         ()                                     => http.get('/api/tmux'),
+  getPanes:         ()                                     => http.get('/api/tmux/panes'),
   getAllStatus:      ()                                     => http.get('/api/tmux/status/all'),
   getPane:          (id: string)                           => http.get(`/api/tmux/panes/${encodeURIComponent(id)}`),
   updatePane:       (id: string, data: any)                => http.patch(`/api/tmux/panes/${encodeURIComponent(id)}`, data),
