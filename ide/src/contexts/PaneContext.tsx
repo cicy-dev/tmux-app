@@ -5,7 +5,7 @@ import apiService from '../services/api';
 import { TokenManager } from '../services/tokenManager';
 import { useApp } from './AppContext';
 
-export const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
+const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
 const STORAGE_KEY = `ttyd_app_settings_v1_${CurrentPaneId}`;
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -161,7 +161,7 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isCapturing, setIsCapturing] = useState(false);
 
   // Derived
-  const displayPaneId = currentPaneId || CurrentPaneId;
+  const displayPaneId = currentPaneId!;
   const displayPaneTitle = paneDetail?.title || currentPane?.title || displayPaneId || 'No pane selected';
   const hasPermission = useCallback((perm: string) => userPerms.includes('api_full') || userPerms.includes(perm), [userPerms]);
 

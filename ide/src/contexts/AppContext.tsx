@@ -5,6 +5,7 @@ import apiService from '../services/api';
 import config from '../config';
 
 const APP_VERSION = config.version;
+const URL_PANE_ID = decodeURIComponent(window.location.href.split("/")[4]) || null;
 
 interface Agent {
   pane_id: string;
@@ -56,7 +57,9 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
-  const [currentPaneId, setCurrentPaneId] = useState<string | null>(null);
+  const [currentPaneId, setCurrentPaneId] = useState<string | null>(() => {
+    return PaneManager.getCurrentPane() || URL_PANE_ID;
+  });
   const [paneDetail, setPaneDetail] = useState<any | null>(null);
   const [api, setApi] = useState<typeof apiService | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);

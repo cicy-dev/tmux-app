@@ -7,7 +7,7 @@ import { CaptureDialog } from './components/CaptureDialog';
 import { AgentsRightView } from './components/AgentsRightView';
 import apiService from './services/api';
 import { useDialog } from './contexts/DialogContext';
-import { usePane, CurrentPaneId } from './contexts/PaneContext';
+import { usePane } from './contexts/PaneContext';
 import { useVoice } from './contexts/VoiceContext';
 import LeftSidePanel from './components/LeftSidePanel';
 import RightSidePanel from './components/RightSidePanel';
@@ -47,7 +47,7 @@ const App: React.FC = () => {
   // Load bound agents
   useEffect(() => {
     if (!token) return;
-    apiService.getAgentsByPane(CurrentPaneId)
+    apiService.getAgentsByPane(displayPaneId)
       .then(({ data }) => setBoundAgents(data.map((a: any) => a.name)))
       .catch(() => {});
   }, [token]);
@@ -94,7 +94,7 @@ const App: React.FC = () => {
               setIsDragging(true);
               let currentWidth = ttydWidth;
               const onMouseMove = (ev: MouseEvent) => { currentWidth = Math.max(200, Math.min(window.innerWidth - 560, ev.clientX - leftW - 120)); setTtydWidth(currentWidth); };
-              const onMouseUp = () => { setIsDragging(false); localStorage.setItem(`${CurrentPaneId}_ttydWidth`, currentWidth.toString()); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+              const onMouseUp = () => { setIsDragging(false); localStorage.setItem(`${displayPaneId}_ttydWidth`, currentWidth.toString()); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
               document.addEventListener('mousemove', onMouseMove);
               document.addEventListener('mouseup', onMouseUp);
             }}

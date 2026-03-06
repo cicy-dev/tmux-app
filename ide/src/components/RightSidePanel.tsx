@@ -8,7 +8,7 @@ import { AgentsListView } from './AgentsListView';
 import { AgentsRightView } from './AgentsRightView';
 import { EditPaneData } from './EditPaneDialog';
 import { useApp } from '../contexts/AppContext';
-import { usePane, CurrentPaneId } from '../contexts/PaneContext';
+import { usePane } from '../contexts/PaneContext';
 
 interface RightSidePanelProps {
   ttydWidth: number;
@@ -103,7 +103,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
             key={tab}
             onClick={() => {
               setActiveTab(tab);
-              localStorage.setItem(`${CurrentPaneId}_activeTab`, tab);
+              localStorage.setItem(`${displayPaneId}_activeTab`, tab);
             }}
             className={`px-4 py-1 rounded text-sm ${activeTab === tab ? 'bg-vsc-bg text-vsc-text' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover'}`}
           >
@@ -187,7 +187,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
                     key={idx}
                     onClick={() => {
                       setPreviewTab(idx);
-                      localStorage.setItem(`${CurrentPaneId}_previewTab`, idx.toString());
+                      localStorage.setItem(`${displayPaneId}_previewTab`, idx.toString());
                     }}
                     style={{
                       padding: '4px 12px',
@@ -255,7 +255,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
             )}
             {agentsSubTab === 'Binded' && (
               <AgentsListView 
-                paneId={CurrentPaneId} 
+                paneId={displayPaneId} 
                 token={token} 
                 isDragging={isDragging} 
                 onAgentsChange={(agents) => setBoundAgents(agents)} 
