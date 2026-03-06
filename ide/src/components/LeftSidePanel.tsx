@@ -12,7 +12,7 @@ const statusConfig: Record<string, { color: string; label: string }> = {
 };
 
 const LeftSidePanel: React.FC = () => {
-  const { allPanes, currentPaneId, selectPane, paneDetail } = useApp();
+  const { allPanes, currentPaneId, selectPane } = useApp();
   const { openDialog, closeDialog, activeDialog } = useDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const [newTitle, setNewTitle] = useState('');
@@ -82,7 +82,7 @@ const LeftSidePanel: React.FC = () => {
         {filtered.map((pane: any) => {
           const isActive = currentPaneId === pane.pane_id;
           const si = getStatusInfo(pane);
-          const title = (isActive && paneDetail?.title) ? paneDetail.title : (pane.title || pane.pane_id);
+          const title = pane.title || pane.pane_id;
           const shortId = pane.pane_id?.replace(':main.0', '');
 
           return (
