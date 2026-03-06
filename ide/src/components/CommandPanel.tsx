@@ -221,31 +221,6 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
     
     if (!cmd || !paneTarget) return;
     
-    // If auto-correct is enabled, correct first
-    if (autoCorrectEnabled && token) {
-      setPromptText('');
-      saveDraft('');
-      setIsCorrectingEnglish(true); if (onCorrectionLoading) onCorrectionLoading(true);
-      try {
-        const { data } = await apiService.correctEnglish(cmd);
-        console.log('[correctEnglish] Response:', data);
-        if (data.success && data.result && Array.isArray(data.result) && data.result.length > 0) {
-          setCorrectedResult(data.result);
-          if (onShowCorrection) {
-            console.log('[correctEnglish] Calling onShowCorrection with:', data.result);
-            onShowCorrection(data.result);
-          }
-        } else {
-          console.warn('[correctEnglish] Invalid response format:', data);
-        }
-      } catch (e) { 
-        console.error('Correct English error:', e); 
-      } finally { 
-        setIsCorrectingEnglish(false); if (onCorrectionLoading) onCorrectionLoading(false); 
-      }
-      return;
-    }
-    
     const newHistory = [cmd, ...commandHistory.filter(c => c !== cmd)].slice(0, 50);
     setCommandHistory(newHistory);
     saveCommandHistory(newHistory);
