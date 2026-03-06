@@ -37,8 +37,6 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
 
   const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const [historyData, setHistoryData] = useState<{history: string[], onSelect: (cmd: string) => void} | null>(null);
-  const [showCommonPromptOverlay, setShowCommonPromptOverlay] = useState(false);
-  const [commonPromptText, setCommonPromptText] = useState('');
   const [showCorrectionResult, setShowCorrectionResult] = useState(false);
   const [correctionData, setCorrectionData] = useState<[string, string] | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -126,8 +124,6 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
         commandPanelRef={commandPanelRef}
         showHistoryOverlay={showHistoryOverlay} setShowHistoryOverlay={setShowHistoryOverlay}
         historyData={historyData} setHistoryData={setHistoryData}
-        showCommonPromptOverlay={showCommonPromptOverlay} setShowCommonPromptOverlay={setShowCommonPromptOverlay}
-        commonPromptText={commonPromptText} setCommonPromptText={setCommonPromptText}
         showCorrectionResult={showCorrectionResult} setShowCorrectionResult={setShowCorrectionResult}
         correctionData={correctionData} setCorrectionData={setCorrectionData}
         boundAgents={boundAgents}
@@ -143,8 +139,6 @@ interface MiddleContentProps {
   commandPanelRef: React.RefObject<CommandPanelHandle>;
   showHistoryOverlay: boolean; setShowHistoryOverlay: (v: boolean) => void;
   historyData: {history: string[], onSelect: (cmd: string) => void} | null; setHistoryData: (v: any) => void;
-  showCommonPromptOverlay: boolean; setShowCommonPromptOverlay: (v: boolean) => void;
-  commonPromptText: string; setCommonPromptText: (v: string) => void;
   showCorrectionResult: boolean; setShowCorrectionResult: (v: boolean) => void;
   correctionData: [string, string] | null; setCorrectionData: (v: [string, string] | null) => void;
   boundAgents: string[];
@@ -153,11 +147,9 @@ interface MiddleContentProps {
 const MiddleContent: React.FC<MiddleContentProps> = ({
   mainIframeRef, commandPanelRef,
   showHistoryOverlay, setShowHistoryOverlay, historyData, setHistoryData,
-  showCommonPromptOverlay, setShowCommonPromptOverlay, commonPromptText, setCommonPromptText,
   showCorrectionResult, setShowCorrectionResult, correctionData, setCorrectionData,
   boundAgents,
 }) => {
-  const { paneDetail, api, setPaneDetail } = useApp();
   const {
     displayPaneId, displayPaneTitle, token, hasPermission,
     isDragging, setIsDragging, isInteracting, setIsInteracting, commandPanelHeight,
@@ -165,7 +157,7 @@ const MiddleContent: React.FC<MiddleContentProps> = ({
     visitedPanes, settings, setSettings,
     networkLatency, networkStatus, toast, setToast,
     handleRestart, handleCapturePane, handleToggleMouse,
-    isCapturing, ttydWidth,
+    isCapturing, ttydWidth, captureOutput, setCaptureOutput,
   } = usePane();
 
   return (
@@ -197,47 +189,16 @@ const MiddleContent: React.FC<MiddleContentProps> = ({
             </div>
           </div>
         )}
-        {showCommonPromptOverlay && (
-          <div style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', flexDirection: 'column'}}>
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #474747', backgroundColor: '#1e1e1e'}}>
-              <span style={{fontSize: '14px', color: '#cccccc', fontWeight: 500}}>Common Prompt</span>
-              <button onClick={() => setShowCommonPromptOverlay(false)} style={{color: '#858585', background: 'none', border: 'none', cursor: 'pointer'}}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-            <textarea 
-              value={commonPromptText}
-              onChange={(e) => setCommonPromptText(e.target.value)}
-              style={{flex: 1, padding: '12px 16px', margin: '8px', backgroundColor: '#1e1e1e', color: '#cccccc', border: '1px solid #474747', borderRadius: '4px', fontFamily: 'monospace', fontSize: '13px', resize: 'none'}}
-            />
-            <div style={{padding: '12px 16px', borderTop: '1px solid #474747', backgroundColor: '#1e1e1e', display: 'flex', gap: '8px', justifyContent: 'flex-end'}}>
-              <button 
-                onClick={async () => {
-                  try {
-                    await api!.updatePane(displayPaneId, {common_prompt: commonPromptText});
-                    setPaneDetail({...paneDetail, common_prompt: commonPromptText});
-                    setToast('Common prompt saved');
-                    setTimeout(() => setToast(null), 3000);
-                    setShowCommonPromptOverlay(false);
-                  } catch (err) {
-                    console.error('Save error:', err);
-                    setToast('Failed to save');
-                    setTimeout(() => setToast(null), 3000);
-                  }
-                }}
-                style={{padding: '6px 12px', backgroundColor: '#0e639c', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px'}}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        )}
         {visitedPanes.filter(id => id && id !== '' && id !== 'undefined').map((paneId) => (
           <div key={`terminal-${paneId}`} className="absolute inset-0" style={{ backgroundColor:"#474747", zIndex: paneId === displayPaneId ? 1 : 0, visibility: paneId === displayPaneId ? 'visible' : 'hidden' }}>
             <WebFrame ref={paneId === displayPaneId ? mainIframeRef : undefined} loading="lazy" src={urls.ttyd(paneId, token)} className="w-full h-full" codeServer={true} />
           </div>
         ))}
         <div id="main-middle-mask" className="ttyd-mask absolute inset-0 bg-transparent z-10" style={{display: 'none', pointerEvents: 'auto'}} onClick={(e) => { window.dispatchEvent(new CustomEvent('selectPane', { detail: { paneId: displayPaneId } })); (e.target as HTMLElement).style.display = 'none'; }} />
+        {/* Capture overlay - on top of iframe */}
+        {captureOutput !== null && (
+          <CaptureOverlay output={captureOutput} paneId={displayPaneId} isRefreshing={isCapturing} onClose={() => setCaptureOutput(null)} onRefresh={(lines) => { setCaptureOutput(''); handleCapturePane(displayPaneId, lines); }} />
+        )}
       </div>
       {isDragging && <div className="absolute inset-0 z-20"></div>}
       {isInteracting && <div className="absolute inset-0 z-20"></div>}
@@ -329,3 +290,24 @@ const CorrectionRow: React.FC<{text: string, bg: string, btnClass: string, textC
     </div>
   </div>
 );
+
+const CaptureOverlay: React.FC<{output: string, paneId: string, isRefreshing: boolean, onClose: () => void, onRefresh: (lines: number) => void}> = ({output, paneId, isRefreshing, onClose, onRefresh}) => {
+  const [lines, setLines] = React.useState(100);
+  const preRef = React.useRef<HTMLPreElement>(null);
+  React.useEffect(() => { if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight; }, [output]);
+  return (
+    <div className="absolute inset-0 z-50 flex flex-col bg-vsc-bg">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-vsc-border bg-vsc-bg-titlebar">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-vsc-text">Capture: {paneId.replace(':main.0','')}</span>
+          <input type="number" value={lines} onChange={(e) => setLines(Math.max(1, parseInt(e.target.value) || 10))} className="w-16 px-1.5 py-0.5 text-xs bg-vsc-bg-secondary text-vsc-text border border-vsc-border rounded" min="1" />
+          <button onClick={() => onRefresh(lines)} disabled={isRefreshing} className="px-2 py-0.5 text-xs bg-vsc-button hover:bg-vsc-button-hover text-white rounded disabled:opacity-50">{isRefreshing ? '...' : 'Refresh'}</button>
+        </div>
+        <button onClick={onClose} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <pre ref={preRef} className="flex-1 overflow-auto p-3 text-xs text-green-400 font-mono whitespace-pre-wrap break-all">{output || '(empty)'}</pre>
+    </div>
+  );
+};

@@ -4,8 +4,6 @@ import { urls } from '../config';
 import apiService from '../services/api';
 import { WebFrame } from './WebFrame';
 import { SettingsView } from './SettingsView';
-import { AgentsListView } from './AgentsListView';
-import { AgentsRightView } from './AgentsRightView';
 import { EditPaneData } from './EditPaneDialog';
 import { useApp } from '../contexts/AppContext';
 import { usePane } from '../contexts/PaneContext';
@@ -19,7 +17,7 @@ interface RightSidePanelProps {
 
 const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, setBoundAgents, leftWidth }) => {
   const { paneDetail, api, setPaneDetail, updatePane, globalVar, loadGlobalVar, updateGlobalVar } = useApp();
-  const { displayPaneId, token, hasPermission, activeTab, setActiveTab, agentsSubTab, setAgentsSubTab, previewTab, setPreviewTab, toast, setToast, isInteracting } = usePane();
+  const { displayPaneId, token, hasPermission, activeTab, setActiveTab, previewTab, setPreviewTab, toast, setToast, isInteracting } = usePane();
 
   const [paneWorkspace, setPaneWorkspace] = useState<string>(() => {
     const cached = localStorage.getItem(`codeserver_folder_${displayPaneId}`);
@@ -98,7 +96,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
   return (
     <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(${leftWidth}px + ${ttydWidth}px)`, width: `calc(100vw - ${leftWidth}px - ${ttydWidth}px - 4px)`}}>
       <div id="right-side-top" className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
-        {([ 'Code', 'Agents', 'Preview', 'Settings', 'Global'] as const).map(tab => (
+        {([ 'Code', 'Prompt', 'Agents', 'Preview', 'Settings', 'Global'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => {
@@ -169,6 +167,9 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
             {isDragging && <div className="absolute inset-0 z-20"></div>}
           </div>
         )}
+      {activeTab === 'Prompt' && (
+        <PromptTab />
+      )}
       {activeTab === 'Preview' && (
         <>
           {!globalVar?.favor?.previewUrls || globalVar.favor.previewUrls.filter((item: any) => item.enable).length === 0 ? (
@@ -214,56 +215,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
         </>
       )}
       {activeTab === 'Agents' && (
-        <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column'}}>
-          <div className="flex items-center gap-2 px-4 py-2 border-b border-vsc-border">
-            {(['All', 'Binded'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setAgentsSubTab(tab)}
-                className={`px-3 py-1 rounded text-sm ${agentsSubTab === tab ? 'bg-vsc-button text-vsc-button-text' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover'}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1 overflow-auto">
-            {agentsSubTab === 'All' && (
-              <AgentsRightView 
-                token={token} 
-                existingTabs={[]} 
-                onAddAgent={(paneId, url) => {
-                  console.log('Bind agent:', paneId, url);
-                }}
-                onNewAgent={async () => {
-                  if (!confirm('Create a new agent?')) return;
-                  try {
-                    const { data } = await apiService.createPane({
-                        win_name: `Agent-${Date.now()}`,
-                        workspace: '',
-                        init_script: 'pwd'
-                      });
-                    if (data.pane_id) {
-                      alert(`Created: ${data.pane_id}`);
-                    } else {
-                      alert(`Failed: ${data.detail || 'Unknown error'}`);
-                    }
-                  } catch (err) {
-                    alert(`Error: ${err}`);
-                  }
-                }}
-              />
-            )}
-            {agentsSubTab === 'Binded' && (
-              <AgentsListView 
-                paneId={displayPaneId} 
-                token={token} 
-                isDragging={isDragging} 
-                onAgentsChange={(agents) => setBoundAgents(agents)} 
-                onCaptureOpen={() => {}}
-              />
-            )}
-          </div>
-        </div>
+        <BindedAgentsTab paneId={displayPaneId} token={token} isDragging={isDragging} setBoundAgents={setBoundAgents} />
       )}
       {activeTab === 'Settings' && (
         <div style={{marginTop: '40px', height: 'calc(100% - 40px)', position: 'relative'}}>
@@ -332,6 +284,110 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
         </div>
       )}
       {isDragging && activeTab !== 'Settings' && activeTab !== 'Agents' && activeTab !== 'Global' && <div className="absolute inset-0 z-20"></div>}
+    </div>
+  );
+};
+
+const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDragging: boolean, setBoundAgents: (a: string[]) => void}> = ({paneId, token, isDragging, setBoundAgents}) => {
+  const { allPanes } = useApp();
+  const [agents, setAgents] = useState<any[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [cols, setCols] = useState<1|2>(() => (localStorage.getItem('agents_cols') === '1' ? 1 : 2));
+
+  const fetchAgents = async () => {
+    setLoading(true);
+    try {
+      const { data } = await apiService.getAgentsByPane(paneId);
+      const withTitles = data.map((a: any) => {
+        const info = allPanes.find((p: any) => p.pane_id === a.name);
+        return { ...a, title: info?.title || a.name };
+      });
+      setAgents(withTitles);
+      setBoundAgents(data.map((a: any) => a.name));
+    } catch {} finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchAgents(); }, [paneId]);
+
+  const handleBind = async () => {
+    if (!selectedAgent) return;
+    try { await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent }); fetchAgents(); setSelectedAgent(''); } catch (err) { alert(`Error: ${err}`); }
+  };
+
+  return (
+    <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column', padding: '8px'}}>
+      <div className="flex gap-2 mb-2 items-center">
+        <select value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)} className="flex-1 bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-xs rounded px-2 py-1">
+          <option value="">Bind agent...</option>
+          {allPanes.filter((p: any) => p.pane_id !== paneId && !agents.find((a: any) => a.name === p.pane_id)).map((p: any) => (
+            <option key={p.pane_id} value={p.pane_id}>{p.title || p.pane_id}</option>
+          ))}
+        </select>
+        <button onClick={handleBind} disabled={!selectedAgent} className="px-2 py-1 text-xs bg-vsc-button hover:bg-vsc-button-hover disabled:opacity-40 text-white rounded">Bind</button>
+        <button onClick={() => { const c = cols === 1 ? 2 : 1; setCols(c as 1|2); localStorage.setItem('agents_cols', String(c)); }} className="px-2 py-1 text-xs bg-vsc-bg-secondary border border-vsc-border text-vsc-text rounded" title="Toggle columns">
+          {cols === 1 ? '▐▌' : '█'}
+        </button>
+      </div>
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-vsc-text-secondary" size={20} /></div>
+      ) : agents.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-vsc-text-secondary text-xs">No agents bound</div>
+      ) : (
+        <div className="flex-1 overflow-auto" style={{display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: '6px', alignContent: 'start'}}>
+          {agents.map((agent: any) => (
+            <div key={agent.id} className="bg-vsc-bg-secondary border border-vsc-border rounded p-2 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-vsc-text font-medium truncate">{agent.title || agent.name.replace(':main.0','')}</span>
+                <div className="flex gap-1">
+                  <button onClick={() => window.open(urls.ttydOpen(agent.name, token || ''), '_blank')} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover" title="Open in new window">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  </button>
+                  <button onClick={async () => { try { await apiService.unbindAgent(agent.id); fetchAgents(); } catch {} }} className="p-0.5 rounded text-red-400 hover:text-red-300 hover:bg-vsc-bg-hover" title="Unbind">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <span className="text-[10px] text-vsc-text-secondary">{agent.name.replace(':main.0','')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PromptTab: React.FC = () => {
+  const { paneDetail, api, setPaneDetail } = useApp();
+  const { displayPaneId, setToast } = usePane();
+  const [text, setText] = useState(paneDetail?.common_prompt || '');
+
+  useEffect(() => { setText(paneDetail?.common_prompt || ''); }, [paneDetail?.common_prompt]);
+
+  return (
+    <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column', padding: '12px'}}>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Enter common prompt here... This will be prepended to every command sent to this agent."
+        className="flex-1 w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm font-mono rounded px-3 py-2 focus:outline-none focus:border-vsc-accent resize-none"
+      />
+      <button
+        onClick={async () => {
+          try {
+            await api!.updatePane(displayPaneId, { common_prompt: text });
+            setPaneDetail({ ...paneDetail, common_prompt: text });
+            setToast('Prompt saved');
+            setTimeout(() => setToast(null), 2000);
+          } catch {
+            setToast('Failed to save');
+            setTimeout(() => setToast(null), 2000);
+          }
+        }}
+        className="mt-2 w-full bg-vsc-button hover:bg-vsc-button-hover text-white text-sm font-medium py-2 rounded"
+      >
+        Save Prompt
+      </button>
     </div>
   );
 };

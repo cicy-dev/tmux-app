@@ -3,7 +3,6 @@ import { Loader2 } from 'lucide-react';
 import { CommandPanelHandle } from './components/CommandPanel';
 import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
-import { CaptureDialog } from './components/CaptureDialog';
 import { AgentsRightView } from './components/AgentsRightView';
 import apiService from './services/api';
 import { useDialog } from './contexts/DialogContext';
@@ -22,7 +21,6 @@ const App: React.FC = () => {
     agentTabs, setAgentTabs, setActiveAgentTab,
     settings, setSettings, isLoaded,
     toast,
-    handleCapturePane, captureOutput, setCaptureOutput, isCapturing,
   } = usePane();
   const { isListening, voiceMode, startRecording, stopRecording } = useVoice();
 
@@ -116,8 +114,6 @@ const App: React.FC = () => {
         />
         </div></div>
       )}
-
-      <CaptureDialog output={captureOutput} onClose={() => setCaptureOutput(null)} onRefresh={(paneId, lines) => { setCaptureOutput(''); handleCapturePane(paneId, lines); }} isRefreshing={isCapturing} paneId={displayPaneId} />
 
       {toast && (
         <div className="fixed bottom-4 right-4 px-4 py-3 bg-red-600 text-white text-sm font-medium rounded shadow-xl" style={{zIndex: 999999999}}>{toast}</div>
