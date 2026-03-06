@@ -8,9 +8,7 @@ import { AgentsListView } from './AgentsListView';
 import { AgentsRightView } from './AgentsRightView';
 import { EditPaneData } from './EditPaneDialog';
 import { useApp } from '../contexts/AppContext';
-import { usePane } from '../contexts/PaneContext';
-
-const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
+import { usePane, CurrentPaneId } from '../contexts/PaneContext';
 
 interface RightSidePanelProps {
   ttydWidth: number;

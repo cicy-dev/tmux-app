@@ -5,7 +5,7 @@ import apiService from '../services/api';
 import { TokenManager } from '../services/tokenManager';
 import { useApp } from './AppContext';
 
-const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
+export const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
 const STORAGE_KEY = `ttyd_app_settings_v1_${CurrentPaneId}`;
 
 const DEFAULT_SETTINGS: AppSettings = {

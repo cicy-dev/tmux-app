@@ -7,13 +7,11 @@ import { CaptureDialog } from './components/CaptureDialog';
 import { AgentsRightView } from './components/AgentsRightView';
 import apiService from './services/api';
 import { useDialog } from './contexts/DialogContext';
-import { usePane } from './contexts/PaneContext';
+import { usePane, CurrentPaneId } from './contexts/PaneContext';
 import { useVoice } from './contexts/VoiceContext';
 import LeftSidePanel from './components/LeftSidePanel';
 import RightSidePanel from './components/RightSidePanel';
 import MainMiddlePanel from './components/MainMiddlePanel';
-
-const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
 
 const App: React.FC = () => {
   const { closeDialog, activeDialog } = useDialog();
