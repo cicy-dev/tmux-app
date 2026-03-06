@@ -590,9 +590,8 @@ const App: React.FC = () => {
         try {
           const { data } = await apiService.getTtydStatus(paneIdClean);
           if (data.status === 'running') {
-              setTimeout(() => location.reload(), 500);
-              return;
-            }
+            setTimeout(() => location.reload(), 500);
+            return;
           }
         } catch {}
       }
