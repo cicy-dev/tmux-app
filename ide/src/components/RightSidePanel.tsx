@@ -497,6 +497,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
       if (newPaneId) {
         await apiService.bindAgent({ pane_id: paneId, agent_name: newPaneId });
         fetchAgents(true);
+        window.dispatchEvent(new CustomEvent('refresh-panes'));
         setToast('Agent created & bound');
         setTimeout(() => setToast(null), 2000);
       }

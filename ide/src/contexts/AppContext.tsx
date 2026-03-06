@@ -118,7 +118,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     fetchAllPanes();
     const id = setInterval(fetchAllPanes, 5000);
-    return () => clearInterval(id);
+    const onRefresh = () => fetchAllPanes();
+    window.addEventListener('refresh-panes', onRefresh);
+    return () => { clearInterval(id); window.removeEventListener('refresh-panes', onRefresh); };
   }, [api]);
 
   const login = (newToken: string) => {

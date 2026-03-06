@@ -112,7 +112,7 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
                   )}
                   <div className="border-t border-vsc-border my-1"></div>
                   <button type="button" onClick={() => { window.open(urls.ttydOpen(displayPaneId, token), '_blank'); setShowMoreMenu(false); }} className="w-full px-3 py-2 text-left text-xs text-vsc-text hover:bg-vsc-bg-hover flex items-center gap-2"><ExternalLink size={12} /> Open in New Tab</button>
-                  <button type="button" onClick={() => { confirmDialog(`Remove agent ${displayPaneId}? This will delete the pane.`, async () => { await apiService.deleteAgent(displayPaneId); const otherPane = allPanes.find(p => p.pane_id !== displayPaneId); if (otherPane) selectPane(otherPane.pane_id); }); setShowMoreMenu(false); }} className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-vsc-bg-hover flex items-center gap-2"><Trash2 size={12} /> Remove Agent</button>
+                  <button type="button" onClick={() => { confirmDialog(`Remove agent ${displayPaneId}? This will delete the pane.`, async () => { await apiService.deleteAgent(displayPaneId); window.dispatchEvent(new CustomEvent('refresh-panes')); const otherPane = allPanes.find(p => p.pane_id !== displayPaneId); if (otherPane) selectPane(otherPane.pane_id); }); setShowMoreMenu(false); }} className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-vsc-bg-hover flex items-center gap-2"><Trash2 size={12} /> Remove Agent</button>
                 </div>
               </>
             )}
