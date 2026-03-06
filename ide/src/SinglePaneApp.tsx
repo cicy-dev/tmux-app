@@ -43,7 +43,7 @@ const App: React.FC = () => {
     handleRestart, handleCapturePane, handleToggleMouse, handlePanelChange,
     captureOutput, setCaptureOutput, isCapturing,
   } = usePane();
-  const MODE = "ttyd";
+  
 
   // Local-only state (not shared with other components)
   const [paneTitle, setPaneTitle] = useState<string>('');
@@ -356,7 +356,7 @@ const App: React.FC = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden font-sans" >
       {
-        MODE === "ttyd" && <div id="main" className="fixed inset-0"> 
+        <div id="main" className="fixed inset-0"> 
 
         {/* Column 1: Left - Agents List */}
         <div id="left-side" className="absolute inset-y-0 left-0 w-[240px] bg-vsc-bg-secondary border-r border-vsc-border z-10">
@@ -797,7 +797,7 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-          <div id="main-middle-content" className="relative w-full" style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - 40px - ${commandPanelHeight}px)` : 'calc(100% - 40px)'}}>
+          <div id="main-middle-content" className="relative w-full" style={{height: hasPermission('prompt') ? `calc(100% - 40px - ${commandPanelHeight}px)` : 'calc(100% - 40px)'}}>
             
             {showHistoryOverlay && historyData && (
               <div style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', flexDirection: 'column'}}>
@@ -914,7 +914,7 @@ const App: React.FC = () => {
           </div>
           {isDragging && <div className="absolute inset-0 z-20"></div>}
           {isInteracting && <div className="absolute inset-0 z-20"></div>}
-          {MODE === 'ttyd' && hasPermission('prompt') && (
+          {hasPermission('prompt') && (
             <div className="absolute bottom-0 left-0 right-0" style={{height: `${commandPanelHeight}px`}}>
               {/* Correction Result */}
               {showCorrectionResult && correctionData ? (
@@ -1037,7 +1037,7 @@ const App: React.FC = () => {
                 onCapturePane={handleCapturePane}
                 isCapturing={isCapturing}
                 canSend={agentStatus === 'idle' || agentStatus === 'wait_startup'}
-                mode={MODE}
+                mode="ttyd"
                 onShowHistory={(history, onSelect) => {
                   if (showHistoryOverlay) {
                     setShowHistoryOverlay(false);
@@ -1092,45 +1092,6 @@ const App: React.FC = () => {
 
 
 
-      {/* Floating command panel */}
-      {MODE !== 'ttyd' && settings.showPrompt && hasPermission('prompt') && (
-        <CommandPanel
-          ref={commandPanelRef}
-          paneTarget={TMUX_TARGET}
-          title={paneTitle || CurrentPaneId}
-          token={token}
-          panelPosition={settings.panelPosition}
-          panelSize={settings.panelSize}
-          readOnly={readOnly}
-          onReadOnlyToggle={() => setReadOnly(v => !v)}
-          onInteractionStart={() => setIsInteracting(true)}
-          onInteractionEnd={() => setIsInteracting(false)}
-          onChange={handlePanelChange}
-          onCapturePane={handleCapturePane}
-          isCapturing={isCapturing}
-          canSend={agentStatus === 'idle' || agentStatus === 'wait_startup'}
-          agentStatus={agentStatus}
-          contextUsage={contextUsage}
-          mouseMode={mouseMode}
-          onDraggingChange={setIsDragging}
-          isTogglingMouse={false}
-          onToggleMouse={handleToggleMouse}
-          onReload={() => {
-            if (mainIframeRef.current) {
-              mainIframeRef.current.src = mainIframeRef.current.src;
-            }
-          }}
-          boundAgents={boundAgents}
-          onRestart={handleRestart}
-          isRestarting={isRestarting}
-          hasEditPermission={hasPermission('agent_manage')}
-          hasRestartPermission={hasPermission('prompt')}
-          hasCapturePermission={hasPermission('ttyd_read')}
-          networkLatency={networkLatency}
-          networkStatus={networkStatus}
-        />
-      )}
-
       {settings.showVoiceControl && hasPermission('prompt') && (
         <div style={{position:"fixed",zIndex:1111111,top:0,right:0,left:0,height:32,pointerEvents:"none"}}><div style={{pointerEvents:"auto",display:"inline-block"}}>
         <VoiceFloatingButton
@@ -1168,19 +1129,6 @@ const App: React.FC = () => {
 
 
 
-
-      {/* ReadOnly mask */}
-      {MODE !== 'ttyd' && settings.showVoiceControl && (
-        <div 
-          className="fixed"
-          style={{inset: '32px 0px 0px', zIndex: 999998, cursor: 'not-allowed'}}
-          onClick={() => {
-            setToast('Click unlock button to edit');
-            setTimeout(() => setToast(null), 1000);
-            commandPanelRef.current?.focusTextarea();
-          }}
-        />
-      )}
 
       {/* Toast notification */}
       {toast && (
