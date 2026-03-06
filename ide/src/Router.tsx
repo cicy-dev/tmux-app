@@ -1,5 +1,5 @@
 import React from 'react';
-import SinglePaneApp from './SinglePaneApp';
+import MainApp from './MainApp';
 import { AppProvider } from './contexts/AppContext';
 import { DialogProvider } from './contexts/DialogContext';
 import { PaneProvider } from './contexts/PaneContext';
@@ -11,7 +11,7 @@ export const Router: React.FC = () => {
       <PaneProvider>
         <VoiceProvider>
           <DialogProvider>
-            <SinglePaneApp />
+            <MainApp />
           </DialogProvider>
         </VoiceProvider>
       </PaneProvider>
