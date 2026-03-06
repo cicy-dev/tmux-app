@@ -435,7 +435,7 @@ const App: React.FC = () => {
   // Load paneDetail when Settings tab is opened
   useEffect(() => {
     if (activeTab === 'Settings' && !paneDetail && api && displayPaneId) {
-      api.getPane(displayPaneId).then(setPaneDetail).catch(console.error);
+      api.getPane(displayPaneId).then(({ data }) => setPaneDetail(data)).catch(console.error);
     }
     if (activeTab === 'Global') {
       loadGlobalVar();
@@ -884,7 +884,7 @@ const App: React.FC = () => {
                     
                     // Update paneDetail immediately
                     if (api) {
-                      const updated = await api.getPane(target);
+                      const { data: updated } = await api.getPane(target);
                       setPaneDetail(updated);
                     }
                     

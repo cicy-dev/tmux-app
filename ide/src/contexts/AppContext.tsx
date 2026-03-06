@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import ApiClient from '../services/api';
 import { TokenManager } from '../services/tokenManager';
 import { PaneManager } from '../services/paneManager';
 import apiService from '../services/api';
@@ -31,7 +30,7 @@ interface AppContextType {
   clearPane: () => void;
 
   // API Client
-  api: ApiClient | null;
+  api: typeof apiService | null;
 
   // Agents
   agents: Agent[];
@@ -63,7 +62,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [token, setToken] = useState<string | null>(null);
   const [currentPaneId, setCurrentPaneId] = useState<string | null>(null);
   const [paneDetail, setPaneDetail] = useState<any | null>(null);
-  const [api, setApi] = useState<ApiClient | null>(null);
+  const [api, setApi] = useState<typeof apiService | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [allPanes, setAllPanes] = useState<Agent[]>([]);
   const [globalVar, setGlobalVar] = useState<any>({});
@@ -83,8 +82,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     if (cachedToken) {
       setToken(cachedToken);
-      const apiClient = new ApiClient(cachedToken);
-      setApi(apiClient);
+      setApi(apiService);
     }
     
     if (cachedPane) {
@@ -105,7 +103,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const fetchAllPanes = async () => {
       const startTime = performance.now();
       try {
-        const data = await api.getAgents();
+        const { data } = await api.getAllStatus();
         const latency = Math.round(performance.now() - startTime);
         
         // Emit network latency event for UI
@@ -133,7 +131,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const login = (newToken: string) => {
     TokenManager.saveToken(newToken);
     setToken(newToken);
-    setApi(new ApiClient(newToken));
+    setApi(apiService);
   };
 
   const logout = () => {
@@ -152,7 +150,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Fetch detailed pane config
     if (api) {
       try {
-        const detail = await api.getPane(paneId);
+        const { data: detail } = await api.getPane(paneId);
         setPaneDetail(detail);
       } catch (err) {
         console.error('Failed to fetch pane detail:', err);
@@ -176,7 +174,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!api) return;
     try {
       setLoading(true);
-      const data = await api.getAgents();
+      const { data } = await api.getAllStatus();
       setAgents(Object.values(data as Record<string, Agent>));
       setError(null);
     } catch (err: any) {
@@ -193,7 +191,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (agentId) {
         await api.unbindAgent(agentId);
       }
-      // Delete pane
       await api.deleteAgent(paneId);
       // Update local state
       setAgents(agents.filter(a => a.pane_id !== paneId));
