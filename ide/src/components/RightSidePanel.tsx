@@ -96,7 +96,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
   return (
     <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(${leftWidth}px + ${ttydWidth}px)`, width: `calc(100vw - ${leftWidth}px - ${ttydWidth}px - 4px)`}}>
       <div id="right-side-top" className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
-        {([ 'Code', 'Prompt', 'Agents', 'Preview', 'Settings', 'Global'] as const).map(tab => (
+        {([ 'Code', 'Prompt', 'Agents', 'Preview', 'Settings'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => {
@@ -218,72 +218,81 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
         <BindedAgentsTab paneId={displayPaneId} token={token} isDragging={isDragging} setBoundAgents={setBoundAgents} />
       )}
       {activeTab === 'Settings' && (
-        <div style={{marginTop: '40px', height: 'calc(100% - 40px)', position: 'relative'}}>
-          {!tempPaneData ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-vsc-bg bg-opacity-80 z-50">
-              <Loader2 className="w-8 h-8 text-vsc-text-secondary animate-spin" />
-            </div>
+        <SettingsTabWithSub
+          tempPaneData={tempPaneData} setTempPaneData={setTempPaneData}
+          isSavingPane={isSavingPane} setIsSavingPane={setIsSavingPane}
+          globalVar={globalVar} updateGlobalVar={updateGlobalVar}
+        />
+      )}
+      {isDragging && activeTab !== 'Settings' && activeTab !== 'Agents' && <div className="absolute inset-0 z-20"></div>}
+    </div>
+  );
+};
+
+const SettingsTabWithSub: React.FC<{
+  tempPaneData: any, setTempPaneData: (v: any) => void,
+  isSavingPane: boolean, setIsSavingPane: (v: boolean) => void,
+  globalVar: any, updateGlobalVar: (v: any) => Promise<void>,
+}> = ({ tempPaneData, setTempPaneData, isSavingPane, setIsSavingPane, globalVar, updateGlobalVar }) => {
+  const { paneDetail, api, setPaneDetail, updatePane } = useApp();
+  const { displayPaneId, setToast } = usePane();
+  const [sub, setSub] = useState<'Agent'|'Global'>('Agent');
+
+  return (
+    <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex'}}>
+      {/* Vertical sub-nav */}
+      <div className="w-20 flex-shrink-0 border-r border-vsc-border bg-vsc-bg-secondary flex flex-col py-2 gap-1">
+        {(['Agent', 'Global'] as const).map(t => (
+          <button key={t} onClick={() => setSub(t)}
+            className={`mx-1 px-2 py-1.5 text-xs rounded text-left ${sub === t ? 'bg-vsc-bg text-vsc-text font-medium' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover'}`}
+          >{t}</button>
+        ))}
+      </div>
+      {/* Content */}
+      <div className="flex-1 min-w-0 relative">
+        {sub === 'Agent' && (
+          !tempPaneData ? (
+            <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-8 h-8 text-vsc-text-secondary animate-spin" /></div>
           ) : (
-            <SettingsView 
+            <SettingsView
               pane={tempPaneData}
-              onChange={(pane) => setTempPaneData(pane)}
+              onChange={setTempPaneData}
               onSave={async () => {
-                if (!tempPaneData || !tempPaneData.target) return;
+                if (!tempPaneData?.target) return;
                 setIsSavingPane(true);
                 try {
-                  const { target, ...dataToSave } = tempPaneData;
-                  await apiService.updatePane(target, dataToSave);
-                  if (api) {
-                    const { data: updated } = await api.getPane(target);
-                    setPaneDetail(updated);
-                  }
-                  updatePane(target, {
-                    title: tempPaneData.title,
-                    workspace: tempPaneData.workspace,
-                    agent_type: tempPaneData.agent_type,
-                    agent_duty: tempPaneData.agent_duty
-                  });
-                } catch (err) {
-                  console.error('Failed to save pane:', err);
-                } finally {
-                  setIsSavingPane(false);
-                }
+                  const { target, ...d } = tempPaneData;
+                  await apiService.updatePane(target, d);
+                  if (api) { const { data: u } = await api.getPane(target); setPaneDetail(u); }
+                  updatePane(target, { title: tempPaneData.title, workspace: tempPaneData.workspace, agent_type: tempPaneData.agent_type, agent_duty: tempPaneData.agent_duty });
+                } catch (err) { console.error(err); }
+                finally { setIsSavingPane(false); }
               }}
               isSaving={isSavingPane}
             />
-          )}
-        </div>
-      )}
-      {activeTab === 'Global' && (
-        <div style={{marginTop: '40px', height: 'calc(100% - 40px)', padding: '16px'}}>
-          <div className="flex flex-col h-full">
+          )
+        )}
+        {sub === 'Global' && (
+          <div className="h-full flex flex-col p-4">
             <label className="block text-xs text-vsc-text-secondary mb-2">Global Settings (JSON)</label>
-            <textarea 
+            <textarea
               id="global-settings-textarea"
               defaultValue={JSON.stringify(globalVar, null, 2)}
               className="flex-1 w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm font-mono rounded px-3 py-2 focus:outline-none focus:border-vsc-accent resize-none"
             />
-            <button 
+            <button
               onClick={async () => {
                 try {
-                  const textarea = document.getElementById('global-settings-textarea') as HTMLTextAreaElement;
-                  const data = JSON.parse(textarea.value);
-                  await updateGlobalVar(data);
-                  setToast('Global settings saved');
-                  setTimeout(() => setToast(null), 3000);
-                } catch (err) {
-                  setToast('Invalid JSON or save failed');
-                  setTimeout(() => setToast(null), 3000);
-                }
-              }} 
+                  const ta = document.getElementById('global-settings-textarea') as HTMLTextAreaElement;
+                  await updateGlobalVar(JSON.parse(ta.value));
+                  setToast('Saved'); setTimeout(() => setToast(null), 2000);
+                } catch { setToast('Invalid JSON'); setTimeout(() => setToast(null), 2000); }
+              }}
               className="mt-3 w-full bg-vsc-button hover:bg-vsc-button-hover text-white text-sm font-medium py-2 rounded"
-            >
-              Save Global Settings
-            </button>
+            >Save</button>
           </div>
-        </div>
-      )}
-      {isDragging && activeTab !== 'Settings' && activeTab !== 'Agents' && activeTab !== 'Global' && <div className="absolute inset-0 z-20"></div>}
+        )}
+      </div>
     </div>
   );
 };
