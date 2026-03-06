@@ -90,9 +90,11 @@ const App: React.FC = () => {
             onMouseDown={(e) => {
               e.preventDefault();
               setIsDragging(true);
-              let currentWidth = ttydWidth;
-              const onMouseMove = (ev: MouseEvent) => { currentWidth = Math.max(200, Math.min(window.innerWidth - 560, ev.clientX - leftW - 120)); setTtydWidth(currentWidth); };
-              const onMouseUp = () => { setIsDragging(false); localStorage.setItem(`${displayPaneId}_ttydWidth`, currentWidth.toString()); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+              const startX = e.clientX;
+              const startW = ttydWidth;
+              let curW = startW;
+              const onMouseMove = (ev: MouseEvent) => { curW = Math.max(200, Math.min(window.innerWidth - leftW - 200, startW + ev.clientX - startX)); setTtydWidth(curW); };
+              const onMouseUp = () => { setIsDragging(false); localStorage.setItem(`${displayPaneId}_ttydWidth`, String(curW)); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
               document.addEventListener('mousemove', onMouseMove);
               document.addEventListener('mouseup', onMouseUp);
             }}
