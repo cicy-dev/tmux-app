@@ -44,7 +44,7 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
   return (
     <div 
       id="main-middle" 
-      className="absolute inset-0" 
+      className="absolute inset-0 border-r border-vsc-border" 
       style={{width: `${ttydWidth}px`, left: `${leftWidth}px`}}
       onMouseLeave={(e) => {
         const target = e.currentTarget.querySelector('.ttyd-mask') as HTMLElement;
