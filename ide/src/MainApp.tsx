@@ -13,7 +13,7 @@ import RightSidePanel from './components/RightSidePanel';
 import MainMiddlePanel from './components/MainMiddlePanel';
 
 const App: React.FC = () => {
-  const { closeDialog, activeDialog } = useDialog();
+  const { closeDialog, activeDialog, openDialog } = useDialog();
   const {
     displayPaneId, token, setToken, isCheckingAuth, hasPermission,
     ttydWidth, setTtydWidth, isDragging, setIsDragging,
@@ -59,6 +59,13 @@ const App: React.FC = () => {
     window.addEventListener('pinnedPanesChanged', handlePinChange);
     return () => window.removeEventListener('pinnedPanesChanged', handlePinChange);
   }, []);
+
+  // Listen to openAddAgent event
+  useEffect(() => {
+    const handler = () => openDialog('addAgent');
+    window.addEventListener('openAddAgent', handler);
+    return () => window.removeEventListener('openAddAgent', handler);
+  }, [openDialog]);
 
   if (isCheckingAuth) return (
     <div className="bg-vsc-bg w-screen h-screen flex items-center justify-center">

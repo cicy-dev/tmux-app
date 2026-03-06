@@ -220,7 +220,7 @@ const MiddleContent: React.FC<MiddleContentProps> = ({
             onInteractionStart={() => setIsInteracting(true)}
             onInteractionEnd={() => setIsInteracting(false)}
             onChange={(pos, size) => setSettings(prev => ({ ...prev, panelSize: size }))}
-            onCapturePane={handleCapturePane}
+            onCapturePane={(paneId) => { if (captureOutput !== null) { setCaptureOutput(null); } else { handleCapturePane(paneId); } }}
             isCapturing={isCapturing}
             canSend={agentStatus === 'idle' || agentStatus === 'wait_startup'}
             mode="ttyd"
@@ -293,21 +293,45 @@ const CorrectionRow: React.FC<{text: string, bg: string, btnClass: string, textC
 
 const CaptureOverlay: React.FC<{output: string, paneId: string, isRefreshing: boolean, onClose: () => void, onRefresh: (lines: number) => void}> = ({output, paneId, isRefreshing, onClose, onRefresh}) => {
   const [lines, setLines] = React.useState(100);
+  const [copied, setCopied] = React.useState(false);
+  const [search, setSearch] = React.useState('');
   const preRef = React.useRef<HTMLPreElement>(null);
   React.useEffect(() => { if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight; }, [output]);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(output);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  // Highlight search matches
+  const renderOutput = () => {
+    if (!output) return <span className="text-vsc-text-secondary italic">( empty )</span>;
+    if (!search) return output;
+    const parts = output.split(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+    return parts.map((part, i) => 
+      part.toLowerCase() === search.toLowerCase() ? <mark key={i} className="bg-yellow-500/40 text-yellow-200 rounded-sm px-0.5">{part}</mark> : part
+    );
+  };
+
   return (
-    <div className="absolute inset-0 z-50 flex flex-col bg-vsc-bg">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-vsc-border bg-vsc-bg-titlebar">
+    <div className="absolute inset-0 z-50 flex flex-col bg-[#0d1117]">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#30363d] bg-[#161b22]">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-vsc-text">Capture: {paneId.replace(':main.0','')}</span>
-          <input type="number" value={lines} onChange={(e) => setLines(Math.max(1, parseInt(e.target.value) || 10))} className="w-16 px-1.5 py-0.5 text-xs bg-vsc-bg-secondary text-vsc-text border border-vsc-border rounded" min="1" />
-          <button onClick={() => onRefresh(lines)} disabled={isRefreshing} className="px-2 py-0.5 text-xs bg-vsc-button hover:bg-vsc-button-hover text-white rounded disabled:opacity-50">{isRefreshing ? '...' : 'Refresh'}</button>
+          <span className="text-xs font-semibold text-[#8b949e]">{paneId.replace(':main.0','')}</span>
+          <input type="number" value={lines} onChange={(e) => setLines(Math.max(1, parseInt(e.target.value) || 10))} className="w-14 px-1.5 py-0.5 text-xs bg-[#0d1117] text-[#c9d1d9] border border-[#30363d] rounded" min="1" />
+          <button onClick={() => onRefresh(lines)} disabled={isRefreshing} className="px-2 py-0.5 text-xs bg-[#238636] hover:bg-[#2ea043] text-white rounded disabled:opacity-50">{isRefreshing ? '...' : '↻'}</button>
+          <span className="text-[10px] text-[#484f58]">|</span>
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-24 px-1.5 py-0.5 text-xs bg-[#0d1117] text-[#c9d1d9] border border-[#30363d] rounded placeholder:text-[#484f58]" />
+          <button onClick={handleCopy} className="px-2 py-0.5 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] border border-[#30363d] rounded">
+            {copied ? '✓' : 'Copy'}
+          </button>
         </div>
-        <button onClick={onClose} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover">
+        <button onClick={onClose} className="p-1 rounded text-[#484f58] hover:text-[#c9d1d9] hover:bg-[#21262d]">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <pre ref={preRef} className="flex-1 overflow-auto p-3 text-xs text-green-400 font-mono whitespace-pre-wrap break-all">{output || '(empty)'}</pre>
+      <pre ref={preRef} className="flex-1 overflow-auto px-4 py-3 text-[13px] leading-5 text-[#c9d1d9] font-mono whitespace-pre-wrap break-all selection:bg-blue-500/30">{renderOutput()}</pre>
     </div>
   );
 };

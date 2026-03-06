@@ -315,40 +315,49 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
     try { await apiService.bindAgent({ pane_id: paneId, agent_name: selectedAgent }); fetchAgents(); setSelectedAgent(''); } catch (err) { alert(`Error: ${err}`); }
   };
 
+  const unbindable = allPanes.filter((p: any) => p.pane_id !== paneId && !agents.find((a: any) => a.name === p.pane_id));
+
   return (
-    <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column', padding: '8px'}}>
-      <div className="flex gap-2 mb-2 items-center">
-        <select value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)} className="flex-1 bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-xs rounded px-2 py-1">
-          <option value="">Bind agent...</option>
-          {allPanes.filter((p: any) => p.pane_id !== paneId && !agents.find((a: any) => a.name === p.pane_id)).map((p: any) => (
-            <option key={p.pane_id} value={p.pane_id}>{p.title || p.pane_id}</option>
+    <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column'}}>
+      {/* Top bar */}
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-vsc-border flex-shrink-0">
+        <select value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)} className="w-28 bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-[11px] rounded px-1 py-0.5 truncate">
+          <option value="">Select...</option>
+          {unbindable.map((p: any) => (
+            <option key={p.pane_id} value={p.pane_id}>{(p.title || p.pane_id).replace(':main.0','')}</option>
           ))}
         </select>
-        <button onClick={handleBind} disabled={!selectedAgent} className="px-2 py-1 text-xs bg-vsc-button hover:bg-vsc-button-hover disabled:opacity-40 text-white rounded">Bind</button>
-        <button onClick={() => { const c = cols === 1 ? 2 : 1; setCols(c as 1|2); localStorage.setItem('agents_cols', String(c)); }} className="px-2 py-1 text-xs bg-vsc-bg-secondary border border-vsc-border text-vsc-text rounded" title="Toggle columns">
-          {cols === 1 ? '▐▌' : '█'}
+        <button onClick={handleBind} disabled={!selectedAgent} className="px-1.5 py-0.5 text-[11px] bg-vsc-button hover:bg-vsc-button-hover disabled:opacity-40 text-white rounded" title="Bind selected agent">+Bind</button>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('openAddAgent'))} className="px-1.5 py-0.5 text-[11px] bg-[#238636] hover:bg-[#2ea043] text-white rounded" title="Create & bind new agent">+New</button>
+        <div className="flex-1" />
+        <button onClick={() => { const c = cols === 1 ? 2 : 1; setCols(c as 1|2); localStorage.setItem('agents_cols', String(c)); }} className="p-0.5 text-[11px] bg-vsc-bg-secondary border border-vsc-border text-vsc-text-secondary rounded hover:text-vsc-text" title="Toggle columns">
+          {cols === 1 ? '⊞' : '▣'}
         </button>
       </div>
+      {/* Content */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-vsc-text-secondary" size={20} /></div>
       ) : agents.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-vsc-text-secondary text-xs">No agents bound</div>
       ) : (
-        <div className="flex-1 overflow-auto" style={{display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: '6px', alignContent: 'start'}}>
+        <div className="flex-1 overflow-auto" style={{display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: '2px', alignContent: 'start'}}>
           {agents.map((agent: any) => (
-            <div key={agent.id} className="bg-vsc-bg-secondary border border-vsc-border rounded p-2 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-vsc-text font-medium truncate">{agent.title || agent.name.replace(':main.0','')}</span>
-                <div className="flex gap-1">
-                  <button onClick={() => window.open(urls.ttydOpen(agent.name, token || ''), '_blank')} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover" title="Open in new window">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  </button>
-                  <button onClick={async () => { try { await apiService.unbindAgent(agent.id); fetchAgents(); } catch {} }} className="p-0.5 rounded text-red-400 hover:text-red-300 hover:bg-vsc-bg-hover" title="Unbind">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                </div>
+            <div key={agent.id} className="flex flex-col border-b border-vsc-border">
+              {/* Agent header */}
+              <div className="flex items-center gap-1 px-2 py-1 bg-vsc-bg-secondary">
+                <span className="text-[11px] text-vsc-text font-medium truncate flex-1">{(agent.title || agent.name).replace(':main.0','')}</span>
+                <button onClick={() => window.open(urls.ttydOpen(agent.name, token || ''), '_blank')} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text" title="Open in new tab">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </button>
+                <button onClick={async () => { try { await apiService.unbindAgent(agent.id); fetchAgents(); } catch {} }} className="p-0.5 rounded text-red-400 hover:text-red-300" title="Unbind">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
-              <span className="text-[10px] text-vsc-text-secondary">{agent.name.replace(':main.0','')}</span>
+              {/* Agent ttyd iframe */}
+              <div className="relative" style={{height: cols === 1 ? '300px' : '200px'}}>
+                <WebFrame src={urls.ttyd(agent.name, token || '', 1)} className="w-full h-full" />
+                {isDragging && <div className="absolute inset-0 z-20" />}
+              </div>
             </div>
           ))}
         </div>
