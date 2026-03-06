@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import axios from 'axios';
 import { Loader2, SplitSquareHorizontal, SplitSquareVertical, XSquare, Home, RefreshCw, MoreVertical, Folder, Pin, Unlink, ExternalLink, RotateCw, Trash2 } from 'lucide-react';
 import { CommandPanel, CommandPanelHandle } from './components/CommandPanel';
@@ -199,11 +200,21 @@ const App: React.FC = () => {
     }
   };
 
+  // Disable iframe pointer-events when any overlay dialog is open (iframes ignore z-index)
+  useEffect(() => {
+    const hasOverlay = showAddPanel || showDesktopDialog || showRemoveConfirm;
+    document.querySelectorAll('iframe').forEach((el) => {
+      (el as HTMLElement).style.pointerEvents = hasOverlay ? 'none' : '';
+    });
+  }, [showAddPanel, showDesktopDialog, showRemoveConfirm]);
+
   // Close correction panel and history with Esc key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showDesktopDialog) {
+        if (showAddPanel) {
+          setShowAddPanel(false);
+        } else if (showDesktopDialog) {
           setShowDesktopDialog(false);
         } else if (showCorrectionResult) {
           setShowCorrectionResult(false);
@@ -216,7 +227,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showCorrectionResult, showHistoryOverlay, showDesktopDialog, showCommonPromptOverlay]);
+  }, [showAddPanel, showCorrectionResult, showHistoryOverlay, showDesktopDialog, showCommonPromptOverlay]);
 
   // Listen for common prompt event
   useEffect(() => {
@@ -723,7 +734,7 @@ const App: React.FC = () => {
         MODE === "ttyd" && <div id="main" className="fixed inset-0"> 
 
         {/* Column 1: Left - Agents List */}
-        <div id="left-side" className="absolute inset-y-0 left-0 w-[240px] bg-vsc-bg-secondary border-r border-vsc-border z-10 overflow-hidden">
+        <div id="left-side" className="absolute inset-y-0 left-0 w-[240px] bg-vsc-bg-secondary border-r border-vsc-border z-10">
           <LeftSidePanel />
         </div>
 
@@ -1170,14 +1181,6 @@ const App: React.FC = () => {
             </div>
           </div>
           <div id="main-middle-content" className="relative w-full" style={{height: MODE === 'ttyd' && hasPermission('prompt') ? `calc(100% - 40px - ${commandPanelHeight}px)` : 'calc(100% - 40px)'}}>
-           {showAddPanel && <div style={{position: 'absolute', inset: 0, zIndex: 2000}}><AgentsRightView token={token} existingTabs={agentTabs.map(t => t.paneId)} onAddAgent={(paneId, title,url) => {
-              console.log('Adding agent:', paneId, 'URL:', url);
-              if (!agentTabs.find(t => t.paneId === paneId)) {
-                setAgentTabs([...agentTabs, {paneId,title, url, closable: true}]);
-              }
-              setActiveAgentTab(paneId);
-              setShowAddPanel(false);
-            }} /></div>}
             
             {showHistoryOverlay && historyData && (
               <div style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', flexDirection: 'column'}}>
@@ -1601,6 +1604,22 @@ const App: React.FC = () => {
           onCancel={() => setShowRemoveConfirm(false)}
         />
       )}
+      
+      {/* Add Agent Dialog - Top Level */}
+      {showAddPanel && (
+        <div style={{position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 9999999, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div style={{width: '90%', height: '90%', backgroundColor: '#1e1e1e', borderRadius: '8px', overflow: 'hidden'}}>
+            <AgentsRightView token={token} existingTabs={agentTabs.map(t => t.paneId)} onAddAgent={(paneId, title,url) => {
+              console.log('Adding agent:', paneId, 'URL:', url);
+              if (!agentTabs.find(t => t.paneId === paneId)) {
+                setAgentTabs([...agentTabs, {paneId,title, url, closable: true}]);
+              }
+              setActiveAgentTab(paneId);
+              setShowAddPanel(false);
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1789,8 +1808,8 @@ const LeftSidePanel: React.FC = () => {
         })}
       </div>
       
-      {createDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={() => setCreateDialog(false)}>
+      {createDialog && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999]" onClick={() => setCreateDialog(false)}>
           <div className="bg-vsc-bg border border-vsc-border rounded p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-vsc-text font-semibold mb-3">创建新 Agent</h3>
             <input
@@ -1825,11 +1844,12 @@ const LeftSidePanel: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={() => setDeleteConfirm(null)}>
+      {deleteConfirm && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999]" onClick={() => setDeleteConfirm(null)}>
           <div className="bg-vsc-bg border border-vsc-border rounded p-4 max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-vsc-text font-semibold mb-2">确认删除</h3>
             <p className="text-vsc-text-secondary text-sm mb-4">
@@ -1853,7 +1873,8 @@ const LeftSidePanel: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
     </>
