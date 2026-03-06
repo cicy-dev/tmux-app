@@ -236,13 +236,13 @@ const SettingsTabWithSub: React.FC<{
 }> = ({ tempPaneData, setTempPaneData, isSavingPane, setIsSavingPane, globalVar, updateGlobalVar }) => {
   const { paneDetail, api, setPaneDetail, updatePane } = useApp();
   const { displayPaneId, setToast } = usePane();
-  const [sub, setSub] = useState<'Agent'|'Global'>('Agent');
+  const [sub, setSub] = useState<'Agent'|'Global'|'Tokens'>('Agent');
 
   return (
     <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex'}}>
       {/* Vertical sub-nav */}
       <div className="w-20 flex-shrink-0 border-r border-vsc-border bg-vsc-bg-secondary flex flex-col py-2 gap-1">
-        {(['Agent', 'Global'] as const).map(t => (
+        {(['Agent', 'Global', 'Tokens'] as const).map(t => (
           <button key={t} onClick={() => setSub(t)}
             className={`mx-1 px-2 py-1.5 text-xs rounded text-left ${sub === t ? 'bg-vsc-bg text-vsc-text font-medium' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover'}`}
           >{t}</button>
@@ -291,6 +291,156 @@ const SettingsTabWithSub: React.FC<{
               className="mt-3 w-full bg-vsc-button hover:bg-vsc-button-hover text-white text-sm font-medium py-2 rounded"
             >Save</button>
           </div>
+        )}
+        {sub === 'Tokens' && <TokensSubTab />}
+      </div>
+    </div>
+  );
+};
+
+const ALL_PERMS = ['api_full', 'ttyd_read', 'prompt', 'app_manage', 'agent_manage', 'desktop_manage'];
+
+const TokensSubTab: React.FC = () => {
+  const { setToast } = usePane();
+  const [tokens, setTokens] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formGroupId, setFormGroupId] = useState('');
+  const [formPerms, setFormPerms] = useState<string[]>(['ttyd_read', 'prompt']);
+  const [formNote, setFormNote] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [newToken, setNewToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([apiService.listTokens(), apiService.listGroups()])
+      .then(([t, g]) => { setTokens(t.data.tokens || []); setGroups(g.data.groups || []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleCreate = async () => {
+    if (formPerms.length === 0) return;
+    setCreating(true);
+    try {
+      const { data } = await apiService.createToken({
+        group_id: formGroupId ? parseInt(formGroupId) : null,
+        perms: formPerms,
+        note: formNote || undefined,
+      });
+      setNewToken(data.token);
+      const { data: t } = await apiService.listTokens();
+      setTokens(t.tokens || []);
+      setShowForm(false);
+      setFormGroupId(''); setFormPerms(['ttyd_read', 'prompt']); setFormNote('');
+    } catch (err) { setToast(`Create failed: ${err}`); setTimeout(() => setToast(null), 3000); }
+    finally { setCreating(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm(`Delete token #${id}?`)) return;
+    await apiService.deleteToken(id);
+    setTokens(t => t.filter(x => x.id !== id));
+  };
+
+  const doCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  const groupName = (id: number | null) => {
+    if (id === null) return '—';
+    const g = groups.find((x: any) => x.id === id);
+    return g ? g.name : `#${id}`;
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-vsc-border flex-shrink-0">
+        <span className="text-xs font-semibold text-vsc-text">🔑 API Tokens</span>
+        <div className="flex-1" />
+        <button onClick={() => setShowForm(f => !f)} className="px-2 py-0.5 text-[11px] bg-vsc-button hover:bg-vsc-button-hover text-white rounded">+ New</button>
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <div className="px-3 py-2 border-b border-vsc-border bg-vsc-bg-secondary space-y-2">
+          <div className="flex gap-2">
+            <select value={formGroupId} onChange={e => setFormGroupId(e.target.value)} className="flex-1 bg-vsc-bg border border-vsc-border text-vsc-text text-xs rounded px-2 py-1">
+              <option value="">All groups</option>
+              {groups.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            <input value={formNote} onChange={e => setFormNote(e.target.value)} placeholder="Note..." className="flex-1 bg-vsc-bg border border-vsc-border text-vsc-text text-xs rounded px-2 py-1" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {ALL_PERMS.map(p => (
+              <label key={p} className="flex items-center gap-1 text-[11px] text-vsc-text-secondary cursor-pointer">
+                <input type="checkbox" checked={formPerms.includes(p)} onChange={e => setFormPerms(prev => e.target.checked ? [...prev, p] : prev.filter(x => x !== p))} className="accent-blue-500" />
+                {p}
+              </label>
+            ))}
+          </div>
+          <button onClick={handleCreate} disabled={creating || formPerms.length === 0} className="px-3 py-1 text-xs bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white rounded">
+            {creating ? '...' : 'Create'}
+          </button>
+        </div>
+      )}
+
+      {/* New token display */}
+      {newToken && (
+        <div className="px-3 py-2 border-b border-vsc-border bg-green-900/20">
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-[11px] text-green-300 font-mono bg-black/30 px-2 py-1 rounded break-all">{newToken}</code>
+            <button onClick={() => doCopy(newToken, 'new')} className="text-green-400 hover:text-green-200 text-xs">{copied === 'new' ? '✓' : 'Copy'}</button>
+            <button onClick={() => setNewToken(null)} className="text-vsc-text-secondary hover:text-vsc-text text-xs">✕</button>
+          </div>
+        </div>
+      )}
+
+      {/* Token list */}
+      <div className="flex-1 overflow-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin text-vsc-text-secondary" size={20} /></div>
+        ) : tokens.length === 0 ? (
+          <div className="text-center py-8 text-vsc-text-secondary text-xs">No tokens</div>
+        ) : (
+          <table className="w-full text-[11px]">
+            <thead className="sticky top-0 bg-vsc-bg-secondary">
+              <tr className="text-vsc-text-secondary border-b border-vsc-border">
+                <th className="px-2 py-1.5 text-left">ID</th>
+                <th className="px-2 py-1.5 text-left">Prefix</th>
+                <th className="px-2 py-1.5 text-left">Group</th>
+                <th className="px-2 py-1.5 text-left">Perms</th>
+                <th className="px-2 py-1.5 text-left">Note</th>
+                <th className="px-2 py-1.5 text-left">Date</th>
+                <th className="px-2 py-1.5"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {tokens.map((t: any) => (
+                <tr key={t.id} className="border-b border-vsc-border hover:bg-vsc-bg-hover">
+                  <td className="px-2 py-1.5 text-vsc-text-secondary">#{t.id}</td>
+                  <td className="px-2 py-1.5 text-vsc-text font-mono">{t.token_prefix}</td>
+                  <td className="px-2 py-1.5 text-blue-400">{groupName(t.group_id)}</td>
+                  <td className="px-2 py-1.5">
+                    <div className="flex flex-wrap gap-0.5">
+                      {(t.perms || '').split(',').map((p: string) => (
+                        <span key={p} className="px-1 bg-vsc-bg-secondary rounded text-vsc-text-secondary">{p}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-2 py-1.5 text-vsc-text-secondary truncate max-w-[80px]">{t.note || '-'}</td>
+                  <td className="px-2 py-1.5 text-vsc-text-secondary">{(t.created_at || '').slice(0, 10)}</td>
+                  <td className="px-2 py-1.5">
+                    <button onClick={() => handleDelete(t.id)} className="text-vsc-text-secondary hover:text-red-400" title="Delete">✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
