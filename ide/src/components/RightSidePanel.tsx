@@ -15,19 +15,41 @@ const CurrentPaneId = decodeURIComponent(window.location.href.split("/")[4]);
 interface RightSidePanelProps {
   ttydWidth: number;
   isDragging: boolean;
-  isInteracting: boolean;
   setBoundAgents: (agents: string[]) => void;
-  navigateToPath: (path: string, forceRefresh?: boolean) => void;
 }
 
-const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, isInteracting, setBoundAgents, navigateToPath }) => {
+const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, setBoundAgents }) => {
   const { paneDetail, api, setPaneDetail, updatePane, globalVar, loadGlobalVar, updateGlobalVar } = useApp();
-  const { displayPaneId, token, hasPermission, activeTab, setActiveTab, agentsSubTab, setAgentsSubTab, previewTab, setPreviewTab, toast, setToast } = usePane();
+  const { displayPaneId, token, hasPermission, activeTab, setActiveTab, agentsSubTab, setAgentsSubTab, previewTab, setPreviewTab, toast, setToast, isInteracting } = usePane();
 
   const [paneWorkspace, setPaneWorkspace] = useState<string>('/home/w3c_offical');
   const [showFavorDirs, setShowFavorDirs] = useState(false);
   const [favorDirs, setFavorDirs] = useState<string[]>([]);
   const [tempPaneData, setTempPaneData] = useState<EditPaneData | null>(null);
+
+  const navigateToPath = async (path: string, forceRefresh = false) => {
+    if (!path) return;
+    const frame = document.querySelector('.code-server-iframe') as HTMLIFrameElement | HTMLElement;
+    if (!frame) return;
+    if (!forceRefresh) {
+      try {
+        const currentSrc = (frame as any).src || frame.getAttribute('src');
+        if (currentSrc && new URL(currentSrc).searchParams.get('folder') === path) return;
+      } catch {}
+    }
+    try {
+      const { data } = await apiService.fileExists(path);
+      if (!data.exists) { setToast(`Path not found: ${path}`); setTimeout(() => setToast(null), 3000); return; }
+      const newUrl = urls.codeServer(path);
+      if ((frame as any).stop) (frame as any).stop();
+      if ((frame as any).src !== undefined) (frame as any).src = newUrl;
+      else frame.setAttribute('src', newUrl);
+      setPaneWorkspace(path);
+    } catch {
+      setToast('Failed to check path');
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
   const [isSavingPane, setIsSavingPane] = useState(false);
 
   useEffect(() => {
