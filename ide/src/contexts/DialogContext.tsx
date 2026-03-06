@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 
-type DialogType = 'confirm' | 'createAgent' | 'deleteAgent' | 'desktop' | 'addAgent' | null;
+type DialogType = 'confirm' | 'createAgent' | 'addAgent' | null;
 
 interface DialogContextType {
   activeDialog: DialogType;
