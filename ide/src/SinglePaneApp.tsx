@@ -312,7 +312,7 @@ const App: React.FC = () => {
       const savedToken = TokenManager.getToken();
       if (savedToken) {
         try {
-          await apiService.getPanes();
+          await apiService.verifyAuth(savedToken);
           setToken(savedToken);
         } catch (e) {
           console.error('Token verification failed', e);
@@ -350,9 +350,9 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!token) return;
     
-    apiService.verifyToken()
+    apiService.verifyAuth(token)
       .then(({ data }) => {
-        if (data.valid && data.perms) {
+        if (data.perms) {
           setUserPerms(data.perms);
         }
       })
