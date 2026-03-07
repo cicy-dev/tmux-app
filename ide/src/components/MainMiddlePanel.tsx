@@ -160,6 +160,18 @@ const MiddleContent: React.FC<MiddleContentProps> = ({
     isCapturing, ttydWidth, captureOutput, setCaptureOutput,
   } = usePane();
 
+  // ESC to close capture/history panels
+  React.useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (captureOutput !== null) { setCaptureOutput(null); e.stopPropagation(); }
+        else if (showHistoryOverlay) { setShowHistoryOverlay(false); e.stopPropagation(); }
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [captureOutput, showHistoryOverlay]);
+
   return (
     <>
       <div id="main-middle-content" className="relative w-full" style={{height: hasPermission('prompt') ? `calc(100% - 40px - ${commandPanelHeight}px)` : 'calc(100% - 40px)'}}>
