@@ -85,11 +85,14 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
     if (activeTab === 'Global') loadGlobalVar();
   }, [activeTab, displayPaneId, api, loadGlobalVar]);
 
-  // Load workspace from paneDetail
+  // Load workspace from paneDetail only if no cached folder for this pane
   useEffect(() => {
     if (paneDetail?.workspace) {
-      setPaneWorkspace(paneDetail.workspace);
-      localStorage.setItem(`codeserver_folder_${displayPaneId}`, paneDetail.workspace);
+      const cached = localStorage.getItem(`codeserver_folder_${displayPaneId}`);
+      if (!cached) {
+        setPaneWorkspace(paneDetail.workspace);
+        localStorage.setItem(`codeserver_folder_${displayPaneId}`, paneDetail.workspace);
+      }
     }
   }, [paneDetail]);
 
