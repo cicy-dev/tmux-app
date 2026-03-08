@@ -573,7 +573,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
                 </button>
               </div>
               {/* Agent ttyd iframe */}
-              <div className="relative" style={{height: `${h}px`, marginTop: '12px', marginLeft: '12px'}}>
+              <div className="relative" style={{height: `${h}px`}}>
                 <WebFrame src={urls.ttyd(agent.name, token || '', 1)} className="w-full h-full" />
                 {(isDragging || resizingId !== null) && <div className="absolute inset-0 z-20" />}
               </div>
