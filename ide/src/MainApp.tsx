@@ -70,7 +70,7 @@ const App: React.FC = () => {
     const handler = (e: CustomEvent) => {
       const paneId = e.detail?.paneId;
       if (paneId) {
-        setFloatWindow(prev => prev?.paneId === paneId ? null : { paneId, x: Math.round(window.innerWidth / 2 - 160), y: Math.round(window.innerHeight / 2 - 300), w: 320, h: 600 });
+        setFloatWindow(prev => prev?.paneId === paneId ? null : { paneId, x: Math.round(window.innerWidth / 2 - 180), y: Math.round(window.innerHeight / 2 - 300), w: 360, h: 600 });
       }
     };
     window.addEventListener('toggle-float-window', handler as EventListener);
@@ -191,24 +191,25 @@ const FloatTtydWindow: React.FC<{
   onDraggingChange: (v: boolean) => void;
 }> = ({ paneId, token, x, y, w, h, onClose, onChange, onDraggingChange }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
 
   const startDrag = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
     e.preventDefault();
-    onDraggingChange(true);
+    setActive(true); onDraggingChange(true);
     const sx = e.clientX - x, sy = e.clientY - y;
     const onMove = (ev: MouseEvent) => onChange(Math.max(0, ev.clientX - sx), Math.max(0, ev.clientY - sy), w, h);
-    const onUp = () => { onDraggingChange(false); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    const onUp = () => { setActive(false); onDraggingChange(false); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
 
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    onDraggingChange(true);
+    setActive(true); onDraggingChange(true);
     const sx = e.clientX, sy = e.clientY, sw = w, sh = h;
     const onMove = (ev: MouseEvent) => onChange(x, y, Math.max(240, sw + ev.clientX - sx), Math.max(200, sh + ev.clientY - sy));
-    const onUp = () => { onDraggingChange(false); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    const onUp = () => { setActive(false); onDraggingChange(false); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
@@ -216,16 +217,22 @@ const FloatTtydWindow: React.FC<{
   const ttydUrl = urls.ttydOpen(paneId, token);
 
   return (
-    <div ref={ref} className="fixed flex flex-col bg-vsc-bg border border-vsc-border rounded-lg shadow-2xl overflow-hidden" style={{ left: x, top: y, width: w, height: h, zIndex: 9999998 }}>
-      <div className="h-8 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2 cursor-move select-none flex-shrink-0" onMouseDown={startDrag}>
-        <span className="text-xs text-vsc-text truncate">{paneId}</span>
-        <button onClick={onClose} className="p-0.5 rounded text-vsc-text-secondary hover:text-red-400 hover:bg-red-500/20">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+    <>
+      {active && <div className="fixed inset-0 z-[9999997]" />}
+      <div ref={ref} className="fixed flex flex-col bg-vsc-bg border border-vsc-border rounded-lg shadow-2xl overflow-hidden" style={{ left: x, top: y, width: w, height: h, zIndex: 9999998 }}>
+        <div className="h-8 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2 cursor-move select-none flex-shrink-0" onMouseDown={startDrag}>
+          <span className="text-xs text-vsc-text truncate">{paneId}</span>
+          <button onClick={onClose} className="p-0.5 rounded text-vsc-text-secondary hover:text-red-400 hover:bg-red-500/20">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div className="relative flex-1">
+          <iframe src={ttydUrl} className="w-full h-full border-0" />
+          {active && <div className="absolute inset-0" />}
+        </div>
+        <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize" onMouseDown={startResize} />
       </div>
-      <iframe src={ttydUrl} className="flex-1 w-full border-0" />
-      <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize" onMouseDown={startResize} />
-    </div>
+    </>
   );
 };
 
