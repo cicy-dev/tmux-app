@@ -87,10 +87,12 @@ const LeftSidePanel: React.FC = () => {
           const title = pane.title || pane.pane_id;
           const shortId = pane.pane_id?.replace(':main.0', '');
 
+          const isThinking = si.label === 'thinking';
+
           return (
             <div key={pane.pane_id} onClick={() => selectPane(pane.pane_id)}
-              className={`group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 transition-colors ${isActive ? 'bg-vsc-bg-active border-l-blue-500' : 'border-l-transparent hover:bg-vsc-bg-hover'}`}>
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${si.color}`} title={si.label} />
+              className={`group flex items-center gap-2 px-3 py-2 cursor-pointer border-l-2 transition-colors ${isThinking ? 'bg-yellow-500/10 border-l-yellow-500' : isActive ? 'bg-vsc-bg-active border-l-blue-500' : 'border-l-transparent hover:bg-vsc-bg-hover'}`}>
+              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${si.color}`} title={si.label} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   {pinnedPanes.includes(pane.pane_id) && <span className="text-yellow-500 text-[10px]">📌</span>}
