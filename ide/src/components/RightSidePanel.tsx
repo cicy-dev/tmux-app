@@ -561,7 +561,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
           {agents.map((agent: any) => {
             const h = heights[agent.id] || defaultH;
             return (
-            <div key={agent.id} className="flex flex-col border-b border-vsc-border" style={{marginLeft: '8px', marginTop: '8px'}}>
+            <div key={agent.id} className="flex flex-col border-b border-vsc-border" style={{marginLeft: '16px', marginTop: '16px'}}>
               {/* Agent header */}
               <div className="flex items-center gap-1 px-2 py-1 bg-vsc-bg-secondary">
                 <span className="text-[11px] text-vsc-text font-medium truncate flex-1">{(agent.title || agent.name).replace(':main.0','')}</span>
