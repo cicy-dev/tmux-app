@@ -145,6 +145,7 @@ const App: React.FC = () => {
       {floatWindow && token && (
         <FloatTtydWindow
           paneId={floatWindow.paneId}
+          title={allPanes.find(p => p.pane_id === floatWindow.paneId)?.title || floatWindow.paneId}
           token={token}
           x={floatWindow.x} y={floatWindow.y} w={floatWindow.w} h={floatWindow.h}
           onClose={() => setFloatWindow(null)}
@@ -186,10 +187,10 @@ const App: React.FC = () => {
 };
 
 const FloatTtydWindow: React.FC<{
-  paneId: string; token: string; x: number; y: number; w: number; h: number;
+  paneId: string; title: string; token: string; x: number; y: number; w: number; h: number;
   onClose: () => void; onChange: (x: number, y: number, w: number, h: number) => void;
   onDraggingChange: (v: boolean) => void;
-}> = ({ paneId, token, x, y, w, h, onClose, onChange, onDraggingChange }) => {
+}> = ({ paneId, title, token, x, y, w, h, onClose, onChange, onDraggingChange }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
 
@@ -221,7 +222,7 @@ const FloatTtydWindow: React.FC<{
       {active && <div className="fixed inset-0 z-[9999997]" />}
       <div ref={ref} className="fixed flex flex-col bg-vsc-bg border border-vsc-border rounded-lg shadow-2xl overflow-hidden" style={{ left: x, top: y, width: w, height: h, zIndex: 9999998 }}>
         <div className="h-8 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2 cursor-move select-none flex-shrink-0" onMouseDown={startDrag}>
-          <span className="text-xs text-vsc-text truncate">{paneId}</span>
+          <span className="text-xs text-vsc-text truncate">{title}</span>
           <button onClick={onClose} className="p-0.5 rounded text-vsc-text-secondary hover:text-red-400 hover:bg-red-500/20">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
