@@ -8,12 +8,14 @@ import apiService from './services/api';
 import { useDialog } from './contexts/DialogContext';
 import { usePane } from './contexts/PaneContext';
 import { useVoice } from './contexts/VoiceContext';
+import { useApp } from './contexts/AppContext';
 import LeftSidePanel from './components/LeftSidePanel';
 import RightSidePanel from './components/RightSidePanel';
 import MainMiddlePanel from './components/MainMiddlePanel';
 
 const App: React.FC = () => {
   const { closeDialog, activeDialog } = useDialog();
+  const { currentPaneId, allPanes, loading: appLoading } = useApp();
   const {
     displayPaneId, token, setToken, isCheckingAuth, hasPermission,
     ttydWidth, setTtydWidth, isDragging, setIsDragging,
@@ -68,6 +70,24 @@ const App: React.FC = () => {
   if (!token) return <LoginForm onLogin={(t) => setToken(t)} />;
   if (!isLoaded) return <div className="bg-vsc-bg w-screen h-screen" />;
 
+  // No pane selected: loading or prompt to create
+  if (!currentPaneId) {
+    if (appLoading || allPanes.length === 0) {
+      return (
+        <div className="bg-vsc-bg w-screen h-screen flex flex-col items-center justify-center gap-4">
+          {appLoading ? (
+            <Loader2 size={48} className="text-vsc-accent animate-spin" />
+          ) : (
+            <>
+              <p className="text-vsc-text-secondary text-sm">No agents found</p>
+              <button onClick={() => window.dispatchEvent(new CustomEvent('refresh-panes'))} className="px-4 py-2 bg-vsc-button hover:bg-vsc-button-hover text-white text-sm rounded">Refresh</button>
+            </>
+          )}
+        </div>
+      );
+    }
+  }
+
   const leftW = leftCollapsed ? 0 : 240;
 
   return (
@@ -121,7 +141,7 @@ const App: React.FC = () => {
       )}
 
       {toast && (
-        <div className="fixed bottom-4 right-4 px-4 py-3 bg-red-600 text-white text-sm font-medium rounded shadow-xl" style={{zIndex: 999999999}}>{toast}</div>
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-4 py-2.5 text-white text-sm font-medium rounded-lg shadow-lg transition-all ${toast?.startsWith('Failed') || toast?.startsWith('Error') ? 'bg-red-500/90' : 'bg-emerald-500/90'}`} style={{zIndex: 999999999}}>{toast}</div>
       )}
 
       {activeDialog === 'addAgent' && (

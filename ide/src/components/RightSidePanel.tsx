@@ -585,25 +585,24 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
 };
 
 const PromptTab: React.FC = () => {
-  const { paneDetail, api, setPaneDetail } = useApp();
-  const { displayPaneId, setToast } = usePane();
-  const [text, setText] = useState(paneDetail?.common_prompt || '');
+  const { globalVar, updateGlobalVar } = useApp();
+  const { setToast } = usePane();
+  const [text, setText] = useState(globalVar?.common_prompts || '');
 
-  useEffect(() => { setText(paneDetail?.common_prompt || ''); }, [paneDetail?.common_prompt]);
+  useEffect(() => { setText(globalVar?.common_prompts || ''); }, [globalVar?.common_prompts]);
 
   return (
     <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column', padding: '12px'}}>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Enter common prompt here... This will be prepended to every command sent to this agent."
+        placeholder="Enter common prompts here... Shared across all agents."
         className="flex-1 w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-sm font-mono rounded px-3 py-2 focus:outline-none focus:border-vsc-accent resize-none"
       />
       <button
         onClick={async () => {
           try {
-            await api!.updatePane(displayPaneId, { common_prompt: text });
-            setPaneDetail({ ...paneDetail, common_prompt: text });
+            await updateGlobalVar({ ...globalVar, common_prompts: text });
             setToast('Prompt saved');
             setTimeout(() => setToast(null), 2000);
           } catch {

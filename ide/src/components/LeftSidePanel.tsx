@@ -60,7 +60,9 @@ const LeftSidePanel: React.FC = () => {
   ).sort((a: any, b: any) => {
     const ap = pinnedPanes.includes(a.pane_id) ? 0 : 1;
     const bp = pinnedPanes.includes(b.pane_id) ? 0 : 1;
-    return ap - bp;
+    if (ap !== bp) return ap - bp;
+    // Sort by created_at desc (newest first)
+    return (b.created_at || '').localeCompare(a.created_at || '');
   });
 
   return (

@@ -82,7 +82,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCurrentPaneId(cachedPane);
     }
     
-    setLoading(false);
+    // If no token, stop loading immediately; otherwise wait for fetchAllPanes
+    if (!cachedToken) {
+      setLoading(false);
+    }
   }, []);
 
   // Load global settings when api is ready
@@ -96,23 +99,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const fetchAllPanes = async () => {
       const startTime = performance.now();
       try {
-        const { data } = await api.getAllStatus();
+        const [statusRes, panesRes] = await Promise.all([api.getAllStatus(), api.getPanes()]);
         const latency = Math.round(performance.now() - startTime);
-        
-        // Emit network latency event for UI
         window.dispatchEvent(new CustomEvent('network-latency', { detail: { latency } }));
         
-        const panesArray = Object.values(data as Record<string, Agent>) || [];
-        setAllPanes(panesArray);
+        // Build title/created_at map from panes config
+        const paneConfig: Record<string, any> = {};
+        for (const p of (panesRes.data?.panes || [])) {
+          paneConfig[p.pane_id] = p;
+        }
         
-        // Set first pane as current if not set
-        if (panesArray.length > 0 && !PaneManager.getCurrentPane()) {
+        const panesArray = (Object.entries(statusRes.data as Record<string, Agent>) || []).map(([key, p]) => ({
+          ...p,
+          title: paneConfig[key]?.title || p.title,
+          created_at: paneConfig[key]?.created_at || null,
+        }));
+        setAllPanes(panesArray);
+        setLoading(false);
+        
+        // Auto-select first pane if none selected
+        if (panesArray.length > 0 && !currentPaneId && !PaneManager.getCurrentPane()) {
           const firstPane = panesArray[0];
           PaneManager.setCurrentPane(firstPane.pane_id);
           setCurrentPaneId(firstPane.pane_id);
         }
       } catch (err) {
         console.error('Failed to fetch panes:', err);
+        setLoading(false);
         window.dispatchEvent(new CustomEvent('network-latency', { detail: { latency: null } }));
       }
     };
@@ -120,7 +133,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const id = setInterval(fetchAllPanes, 5000);
     const onRefresh = () => fetchAllPanes();
     window.addEventListener('refresh-panes', onRefresh);
-    return () => { clearInterval(id); window.removeEventListener('refresh-panes', onRefresh); };
+    // Firefox fix: also trigger on visibilitychange
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchAllPanes(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(id); window.removeEventListener('refresh-panes', onRefresh); document.removeEventListener('visibilitychange', onVisible); };
   }, [api]);
 
   const login = (newToken: string) => {

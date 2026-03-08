@@ -170,6 +170,10 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
   const [isCorrectingEnglish, setIsCorrectingEnglish] = useState(false);
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [enterToSend, setEnterToSend] = useState<boolean>(() => {
+    const saved = localStorage.getItem('enter_to_send');
+    return saved === null ? true : saved === 'true';
+  });
   const sendQueueRef = useRef<string[]>([]);
   const [queueLen, setQueueLen] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -361,6 +365,18 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
             <option value="y">Yes (y)</option>
             <option value="n">No (n)</option>
           </select>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !enterToSend;
+              setEnterToSend(next);
+              localStorage.setItem('enter_to_send', String(next));
+            }}
+            className="text-[10px] px-1.5 py-0.5 rounded border border-vsc-border text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active transition-colors select-none"
+            title={enterToSend ? 'Enter=Send, Shift+Enter=Newline' : 'Enter=Newline, Shift+Enter=Send'}
+          >
+            {enterToSend ? '⏎Send' : '⇧⏎Send'}
+          </button>
           {onToggleVoiceControl && (
             <button
               onClick={onToggleVoiceControl}
@@ -489,8 +505,9 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                   e.preventDefault();
                   await apiService.sendKeys(selectedPane, "C-c");
                 } else  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                  if (e.shiftKey) {
-                    // Shift+Enter = newline (default behavior)
+                  const shouldSend = enterToSend ? !e.shiftKey : e.shiftKey;
+                  if (!shouldSend) {
+                    // newline (default behavior)
                     return;
                   } else {
                     // Enter = send directly (no correction)
