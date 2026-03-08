@@ -122,10 +122,7 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [rightCollapsed, setRightCollapsed] = useState(() => localStorage.getItem('rightCollapsed') === 'true');
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const saved = localStorage.getItem(`${CurrentPaneId}_activeTab`);
-    return saved || 'Agents';
-  });
+  const [activeTab, setActiveTab] = useState<string>('Agents');
   const [agentsSubTab, setAgentsSubTab] = useState<'All' | 'Binded'>('All');
   const [previewTab, setPreviewTab] = useState<number>(() => {
     const saved = localStorage.getItem(`${CurrentPaneId}_previewTab`);
