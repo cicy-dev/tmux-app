@@ -28,7 +28,7 @@ const App: React.FC = () => {
   const { isListening, voiceMode, startRecording, stopRecording } = useVoice();
 
   const [boundAgents, setBoundAgents] = useState<string[]>([]);
-  const [floatWindow, setFloatWindow] = useState<{x: number, y: number, w: number, h: number} | null>(null);
+  const [floatWindow, setFloatWindow] = useState<{paneId: string, x: number, y: number, w: number, h: number} | null>(null);
   const [floatDragging, setFloatDragging] = useState(false);
   const [pinnedPanes, setPinnedPanes] = useState<string[]>(() => {
     const saved = localStorage.getItem('pinnedPanes');
@@ -67,11 +67,14 @@ const App: React.FC = () => {
 
   // Listen to float window toggle
   useEffect(() => {
-    const handler = () => {
-      setFloatWindow(prev => prev ? null : { x: Math.round(window.innerWidth / 2 - 160), y: Math.round(window.innerHeight / 2 - 300), w: 320, h: 600 });
+    const handler = (e: CustomEvent) => {
+      const paneId = e.detail?.paneId;
+      if (paneId) {
+        setFloatWindow(prev => prev?.paneId === paneId ? null : { paneId, x: Math.round(window.innerWidth / 2 - 160), y: Math.round(window.innerHeight / 2 - 300), w: 320, h: 600 });
+      }
     };
-    window.addEventListener('toggle-float-window', handler);
-    return () => window.removeEventListener('toggle-float-window', handler);
+    window.addEventListener('toggle-float-window', handler as EventListener);
+    return () => window.removeEventListener('toggle-float-window', handler as EventListener);
   }, []);
 
   if (isCheckingAuth) return (
@@ -141,11 +144,11 @@ const App: React.FC = () => {
 
       {floatWindow && token && (
         <FloatTtydWindow
-          paneId={displayPaneId}
+          paneId={floatWindow.paneId}
           token={token}
           x={floatWindow.x} y={floatWindow.y} w={floatWindow.w} h={floatWindow.h}
           onClose={() => setFloatWindow(null)}
-          onChange={(x, y, w, h) => setFloatWindow({x, y, w, h})}
+          onChange={(x, y, w, h) => setFloatWindow(prev => prev ? {...prev, x, y, w, h} : null)}
           onDraggingChange={setFloatDragging}
         />
       )}
