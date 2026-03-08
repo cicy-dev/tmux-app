@@ -104,6 +104,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
             key={tab}
             onClick={() => {
               setActiveTab(tab);
+              localStorage.setItem(`${displayPaneId}_activeTab`, tab);
             }}
             className={`px-4 py-1 rounded text-sm ${activeTab === tab ? 'bg-vsc-bg text-vsc-text' : 'text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover'}`}
           >
