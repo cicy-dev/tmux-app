@@ -582,6 +582,7 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
           placeholder="Select..."
         />
         <button onClick={handleBind} disabled={!selectedAgent} className="px-1.5 py-0.5 text-[11px] bg-vsc-button hover:bg-vsc-button-hover disabled:opacity-40 text-white rounded" title="Bind selected agent">+Bind</button>
+        <button onClick={() => { if (selectedAgent) window.dispatchEvent(new CustomEvent('toggle-float-window', { detail: { paneId: selectedAgent } })); }} disabled={!selectedAgent} className="px-1.5 py-0.5 text-[11px] bg-vsc-bg-secondary border border-vsc-border text-vsc-text-secondary hover:text-vsc-text disabled:opacity-40 rounded" title="Float selected agent">Float</button>
         <button onClick={handleCreateAndBind} disabled={creating} className="px-1.5 py-0.5 text-[11px] bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white rounded" title="Create new agent & bind to current pane">{creating ? '...' : '+New'}</button>
         <div className="flex-1" />
         <button onClick={() => { const c = cols === 1 ? 2 : 1; setCols(c as 1|2); localStorage.setItem('agents_cols', String(c)); }} className="p-0.5 text-[11px] bg-vsc-bg-secondary border border-vsc-border text-vsc-text-secondary rounded hover:text-vsc-text" title="Toggle columns">
@@ -602,9 +603,6 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
               {/* Agent header */}
               <div className="flex items-center gap-1 px-2 py-1 bg-vsc-bg-secondary">
                 <span className="text-[11px] text-vsc-text font-medium truncate flex-1">{(agent.title || agent.name).replace(':main.0','')}</span>
-                <button onClick={() => window.dispatchEvent(new CustomEvent('toggle-float-window', { detail: { paneId: agent.name } }))} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text" title="Float">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                </button>
                 <button onClick={() => window.open(urls.ttydOpen(agent.name, token || ''), '_blank')} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text" title="Open in new tab">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 </button>
