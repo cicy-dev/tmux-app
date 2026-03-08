@@ -175,6 +175,12 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [displayPaneId]);
 
+  // Update document title
+  useEffect(() => {
+    document.title = displayPaneTitle && displayPaneTitle !== 'No pane selected'
+      ? `${displayPaneTitle} - CiCy` : 'CiCy IDE';
+  }, [displayPaneTitle]);
+
   // Init auth
   useEffect(() => {
     const init = async () => {

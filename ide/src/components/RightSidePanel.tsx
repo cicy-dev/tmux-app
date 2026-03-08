@@ -99,7 +99,7 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
   return (
     <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(${leftWidth}px + ${ttydWidth}px)`, width: `calc(100vw - ${leftWidth}px - ${ttydWidth}px - 4px)`}}>
       <div id="right-side-top" className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
-        {([ 'Code', 'Prompt', 'Agents', 'Preview', 'Settings'] as const).map(tab => (
+        {([ 'Code', 'Prompt', 'Agents', 'Preview', 'Password', 'Settings'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => {
@@ -219,6 +219,12 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
       )}
       {activeTab === 'Agents' && (
         <BindedAgentsTab paneId={displayPaneId} token={token} isDragging={isDragging} setBoundAgents={setBoundAgents} />
+      )}
+      {activeTab === 'Password' && (
+        <div className="absolute inset-0" style={{marginTop: '40px'}}>
+          <WebFrame src="https://pwd.cicy.de5.net/" className="w-full h-full" />
+          {isDragging && <div className="absolute inset-0 z-20"></div>}
+        </div>
       )}
       {activeTab === 'Settings' && (
         <SettingsTabWithSub
