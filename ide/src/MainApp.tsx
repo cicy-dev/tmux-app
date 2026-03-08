@@ -213,7 +213,7 @@ const FloatTtydWindow: React.FC<{
     document.addEventListener('mouseup', onUp);
   };
 
-  const ttydUrl = `${urls.ttyd(paneId, token)}`;
+  const ttydUrl = urls.ttydOpen(paneId, token);
 
   return (
     <div ref={ref} className="fixed flex flex-col bg-vsc-bg border border-vsc-border rounded-lg shadow-2xl overflow-hidden" style={{ left: x, top: y, width: w, height: h, zIndex: 9999998 }}>
