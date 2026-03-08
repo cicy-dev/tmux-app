@@ -88,16 +88,6 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
           <button onClick={onToggleRight} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active" title={rightCollapsed ? 'Show panel' : 'Hide panel'}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
           </button>
-          <select
-            className="bg-vsc-bg-secondary text-vsc-text-secondary text-xs rounded border border-vsc-border px-1 py-0.5 outline-none cursor-pointer hover:text-vsc-text"
-            value=""
-            onChange={(e) => { if (e.target.value) { window.dispatchEvent(new CustomEvent('toggle-float-window', { detail: { paneId: e.target.value } })); e.target.value = ''; } }}
-          >
-            <option value="">Float</option>
-            {allPanes.filter((p: any) => p.pane_id !== displayPaneId).map((p: any) => (
-              <option key={p.pane_id} value={p.pane_id}>{(p.title || p.pane_id).replace(':main.0', '')}</option>
-            ))}
-          </select>
           <div className="relative">
             <button 
               type="button" 

@@ -602,6 +602,9 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
               {/* Agent header */}
               <div className="flex items-center gap-1 px-2 py-1 bg-vsc-bg-secondary">
                 <span className="text-[11px] text-vsc-text font-medium truncate flex-1">{(agent.title || agent.name).replace(':main.0','')}</span>
+                <button onClick={() => window.dispatchEvent(new CustomEvent('toggle-float-window', { detail: { paneId: agent.name } }))} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text" title="Float">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </button>
                 <button onClick={() => window.open(urls.ttydOpen(agent.name, token || ''), '_blank')} className="p-0.5 rounded text-vsc-text-secondary hover:text-vsc-text" title="Open in new tab">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 </button>
