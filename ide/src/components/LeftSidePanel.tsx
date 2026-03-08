@@ -44,7 +44,7 @@ const LeftSidePanel: React.FC = () => {
     if (!ts) return '';
     if (ts < 60) return `${ts}s`;
     if (ts < 3600) return `${Math.floor(ts / 60)}m`;
-    if (ts < 86400) return `${Math.floor(ts / 3600)}h`;
+    if (ts < 172800) return `${Math.floor(ts / 3600)}h`;
     return `${Math.floor(ts / 86400)}d`;
   };
 
