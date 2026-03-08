@@ -57,9 +57,6 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
           </button>
           <div className="relative group flex items-center gap-1">
-            <button className="px-3 py-1 rounded text-sm bg-vsc-button text-vsc-button-text">
-              {displayPaneTitle}
-            </button>
             {displayPaneId && (
               <button
                 onClick={() => {
@@ -77,6 +74,9 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
                 <Pin className={`w-4 h-4 ${pinnedPanes.includes(displayPaneId) ? 'text-yellow-500 fill-yellow-500' : 'text-vsc-text-secondary'}`} />
               </button>
             )}
+            <button className="px-3 py-1 rounded text-sm bg-vsc-button text-vsc-button-text">
+              {displayPaneTitle}
+            </button>
             <span className="text-xs text-vsc-text-secondary px-2">v0.0.3</span>
           </div>
         </div>
