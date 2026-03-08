@@ -70,7 +70,7 @@ const App: React.FC = () => {
     const handler = (e: CustomEvent) => {
       const paneId = e.detail?.paneId;
       if (paneId) {
-        setFloatWindow(prev => prev?.paneId === paneId ? null : { paneId, x: Math.round(window.innerWidth / 2 - 180), y: Math.round(window.innerHeight / 2 - 300), w: 360, h: 600 });
+        setFloatWindow(prev => prev?.paneId === paneId ? null : { paneId, x: Math.round(window.innerWidth / 2 - 230), y: Math.round(window.innerHeight / 2 - 300), w: 460, h: 600 });
       }
     };
     window.addEventListener('toggle-float-window', handler as EventListener);
