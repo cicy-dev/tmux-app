@@ -76,8 +76,9 @@ const LeftSidePanel: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-2 py-1.5 flex-shrink-0">
-        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search..." className="w-full bg-vsc-bg border border-vsc-border text-vsc-text text-xs rounded px-2 py-1 focus:outline-none focus:border-vsc-accent" />
+      <div className="px-2 py-1.5 flex-shrink-0 relative">
+        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search..." className="w-full bg-vsc-bg border border-vsc-border text-vsc-text text-xs rounded px-2 py-1 pr-6 focus:outline-none focus:border-vsc-accent" />
+        {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-vsc-text-secondary hover:text-vsc-text text-xs">✕</button>}
       </div>
 
       <div className="flex-1 overflow-auto">
