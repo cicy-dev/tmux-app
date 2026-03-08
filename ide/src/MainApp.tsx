@@ -5,6 +5,7 @@ import { VoiceFloatingButton } from './components/VoiceFloatingButton';
 import { LoginForm } from './components/LoginForm';
 import { AgentsBrowser } from './components/AgentsBrowser';
 import apiService from './services/api';
+import { urls } from './config';
 import { useDialog } from './contexts/DialogContext';
 import { usePane } from './contexts/PaneContext';
 import { useVoice } from './contexts/VoiceContext';
@@ -27,6 +28,8 @@ const App: React.FC = () => {
   const { isListening, voiceMode, startRecording, stopRecording } = useVoice();
 
   const [boundAgents, setBoundAgents] = useState<string[]>([]);
+  const [floatWindow, setFloatWindow] = useState<{x: number, y: number, w: number, h: number} | null>(null);
+  const [floatDragging, setFloatDragging] = useState(false);
   const [pinnedPanes, setPinnedPanes] = useState<string[]>(() => {
     const saved = localStorage.getItem('pinnedPanes');
     return saved ? JSON.parse(saved) : [];
@@ -60,6 +63,15 @@ const App: React.FC = () => {
     };
     window.addEventListener('pinnedPanesChanged', handlePinChange);
     return () => window.removeEventListener('pinnedPanesChanged', handlePinChange);
+  }, []);
+
+  // Listen to float window toggle
+  useEffect(() => {
+    const handler = () => {
+      setFloatWindow(prev => prev ? null : { x: Math.round(window.innerWidth / 2 - 160), y: Math.round(window.innerHeight / 2 - 300), w: 320, h: 600 });
+    };
+    window.addEventListener('toggle-float-window', handler);
+    return () => window.removeEventListener('toggle-float-window', handler);
   }, []);
 
   if (isCheckingAuth) return (
@@ -122,10 +134,21 @@ const App: React.FC = () => {
         )}
 
         {/* Global drag overlay to prevent iframes from stealing events */}
-        {isDragging && <div className="fixed inset-0 z-[9999] cursor-col-resize" />}
+        {(isDragging || floatDragging) && <div className="fixed inset-0 z-[9999] cursor-col-resize" />}
 
         <MainMiddlePanel ttydWidth={rightCollapsed ? window.innerWidth - leftW : ttydWidth} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} leftWidth={leftW} leftCollapsed={leftCollapsed} rightCollapsed={rightCollapsed} onToggleLeft={() => setLeftCollapsed(!leftCollapsed)} onToggleRight={() => setRightCollapsed(!rightCollapsed)} />
       </div>
+
+      {floatWindow && token && (
+        <FloatTtydWindow
+          paneId={displayPaneId}
+          token={token}
+          x={floatWindow.x} y={floatWindow.y} w={floatWindow.w} h={floatWindow.h}
+          onClose={() => setFloatWindow(null)}
+          onChange={(x, y, w, h) => setFloatWindow({x, y, w, h})}
+          onDraggingChange={setFloatDragging}
+        />
+      )}
 
       {settings.showVoiceControl && hasPermission('prompt') && (
         <div style={{position:"fixed",zIndex:1111111,top:0,right:0,left:0,height:32,pointerEvents:"none"}}><div style={{pointerEvents:"auto",display:"inline-block"}}>
@@ -155,6 +178,50 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const FloatTtydWindow: React.FC<{
+  paneId: string; token: string; x: number; y: number; w: number; h: number;
+  onClose: () => void; onChange: (x: number, y: number, w: number, h: number) => void;
+  onDraggingChange: (v: boolean) => void;
+}> = ({ paneId, token, x, y, w, h, onClose, onChange, onDraggingChange }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const startDrag = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    onDraggingChange(true);
+    const sx = e.clientX - x, sy = e.clientY - y;
+    const onMove = (ev: MouseEvent) => onChange(Math.max(0, ev.clientX - sx), Math.max(0, ev.clientY - sy), w, h);
+    const onUp = () => { onDraggingChange(false); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    onDraggingChange(true);
+    const sx = e.clientX, sy = e.clientY, sw = w, sh = h;
+    const onMove = (ev: MouseEvent) => onChange(x, y, Math.max(240, sw + ev.clientX - sx), Math.max(200, sh + ev.clientY - sy));
+    const onUp = () => { onDraggingChange(false); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const ttydUrl = `${urls.ttyd(paneId, token)}`;
+
+  return (
+    <div ref={ref} className="fixed flex flex-col bg-vsc-bg border border-vsc-border rounded-lg shadow-2xl overflow-hidden" style={{ left: x, top: y, width: w, height: h, zIndex: 9999998 }}>
+      <div className="h-8 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center justify-between px-2 cursor-move select-none flex-shrink-0" onMouseDown={startDrag}>
+        <span className="text-xs text-vsc-text truncate">{paneId}</span>
+        <button onClick={onClose} className="p-0.5 rounded text-vsc-text-secondary hover:text-red-400 hover:bg-red-500/20">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <iframe src={ttydUrl} className="flex-1 w-full border-0" />
+      <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize" onMouseDown={startResize} />
     </div>
   );
 };
