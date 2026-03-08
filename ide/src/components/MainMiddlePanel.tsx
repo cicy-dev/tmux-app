@@ -56,10 +56,6 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
           <button onClick={onToggleLeft} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active" title={leftCollapsed ? 'Show sidebar' : 'Hide sidebar'}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
           </button>
-          <div className="flex items-center gap-1 text-xs text-vsc-text-secondary">
-            <div className={`w-2 h-2 rounded-full ${networkStatus === 'excellent' ? 'bg-green-500' : networkStatus === 'good' ? 'bg-yellow-500' : networkStatus === 'poor' ? 'bg-orange-500' : 'bg-red-500'}`}></div>
-            <span>{networkLatency}ms</span>
-          </div>
           <div className="relative group flex items-center gap-1">
             <button className="px-3 py-1 rounded text-sm bg-vsc-button text-vsc-button-text">
               {displayPaneTitle}
@@ -85,6 +81,10 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-vsc-text-secondary">
+            <div className={`w-2 h-2 rounded-full ${networkStatus === 'excellent' ? 'bg-green-500' : networkStatus === 'good' ? 'bg-yellow-500' : networkStatus === 'poor' ? 'bg-orange-500' : 'bg-red-500'}`}></div>
+            <span>{networkLatency}ms</span>
+          </div>
           <button onClick={onToggleRight} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active" title={rightCollapsed ? 'Show panel' : 'Hide panel'}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
           </button>
