@@ -479,9 +479,11 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                           if (onShowCorrection) {
                             onShowCorrection(data.result);
                           }
+                        } else {
+                          setPromptText(cmd); saveDraft(cmd);
                         }
                       })
-                      .catch(e => console.error('Correct English error:', e))
+                      .catch(e => { console.error('Correct English error:', e); setPromptText(cmd); saveDraft(cmd); })
                       .finally(() => setIsCorrectingEnglish(false));
                   }
                   return;
