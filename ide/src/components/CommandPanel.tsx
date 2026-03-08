@@ -481,9 +481,10 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
                           }
                         } else {
                           setPromptText(cmd); saveDraft(cmd);
+                          window.dispatchEvent(new CustomEvent('show-toast', { detail: `Error: ${data.error || 'Correction failed'}` }));
                         }
                       })
-                      .catch(e => { console.error('Correct English error:', e); setPromptText(cmd); saveDraft(cmd); })
+                      .catch(e => { console.error('Correct English error:', e); setPromptText(cmd); saveDraft(cmd); window.dispatchEvent(new CustomEvent('show-toast', { detail: `Error: ${e.message}` })); })
                       .finally(() => setIsCorrectingEnglish(false));
                   }
                   return;

@@ -257,8 +257,15 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Toast auto-dismiss
   useEffect(() => {
-    if (toast) { const t = setTimeout(() => setToast(null), 1000); return () => clearTimeout(t); }
+    if (toast) { const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); }
   }, [toast]);
+
+  // Listen for show-toast events
+  useEffect(() => {
+    const handler = (e: CustomEvent) => setToast(e.detail);
+    window.addEventListener('show-toast', handler as EventListener);
+    return () => window.removeEventListener('show-toast', handler as EventListener);
+  }, []);
 
   // Operations
   const handleToggleMouse = useCallback(async () => {
