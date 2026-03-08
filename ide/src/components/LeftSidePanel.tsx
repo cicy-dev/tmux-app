@@ -68,7 +68,7 @@ const LeftSidePanel: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-vsc-bg-secondary">
       <div className="h-10 flex items-center justify-between px-3 border-b border-vsc-border flex-shrink-0">
-        <span className="text-xs font-semibold text-vsc-text-secondary uppercase tracking-wider">Agents</span>
+        <span className="text-xs font-semibold text-vsc-text-secondary uppercase tracking-wider ml-4">Agents</span>
         <div className="flex items-center gap-1">
           <button onClick={() => openDialog('createAgent')} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-hover" title="New agent">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
