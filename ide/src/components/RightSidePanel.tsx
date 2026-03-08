@@ -456,6 +456,43 @@ const TokensSubTab: React.FC = () => {
   );
 };
 
+const SearchSelect: React.FC<{value: string, onChange: (v: string) => void, options: {value: string, label: string}[], placeholder?: string}> = ({value, onChange, options, placeholder = 'Select...'}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = React.useRef<HTMLDivElement>(null);
+  const selectedLabel = options.find(o => o.value === value)?.label || '';
+
+  React.useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const filtered = options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div ref={ref} className="relative w-32">
+      <button type="button" onClick={() => { setOpen(!open); setSearch(''); }} className="w-full bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-[11px] rounded px-1.5 py-0.5 text-left truncate">
+        {selectedLabel || placeholder}
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 w-48 bg-vsc-bg-secondary border border-vsc-border rounded shadow-lg z-50">
+          <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="w-full bg-vsc-bg border-b border-vsc-border text-vsc-text text-[11px] px-2 py-1 outline-none" />
+          <div className="max-h-48 overflow-auto">
+            {filtered.length === 0 ? (
+              <div className="px-2 py-1 text-[11px] text-vsc-text-secondary">No results</div>
+            ) : filtered.map(o => (
+              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); }} className={`w-full text-left px-2 py-1 text-[11px] hover:bg-vsc-bg-hover ${o.value === value ? 'text-vsc-accent' : 'text-vsc-text'}`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDragging: boolean, setBoundAgents: (a: string[]) => void}> = ({paneId, token, isDragging, setBoundAgents}) => {
   const { allPanes } = useApp();
   const { setToast } = usePane();
@@ -538,12 +575,12 @@ const BindedAgentsTab: React.FC<{paneId: string, token: string | null, isDraggin
     <div style={{marginTop: '40px', height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column'}}>
       {/* Top bar */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-vsc-border flex-shrink-0">
-        <select value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)} className="w-28 bg-vsc-bg-secondary border border-vsc-border text-vsc-text text-[11px] rounded px-1 py-0.5 truncate">
-          <option value="">Select...</option>
-          {unbindable.map((p: any) => (
-            <option key={p.pane_id} value={p.pane_id}>{(p.title || p.pane_id).replace(':main.0','')}</option>
-          ))}
-        </select>
+        <SearchSelect
+          value={selectedAgent}
+          onChange={setSelectedAgent}
+          options={unbindable.map((p: any) => ({ value: p.pane_id, label: (p.title || p.pane_id).replace(':main.0','') }))}
+          placeholder="Select..."
+        />
         <button onClick={handleBind} disabled={!selectedAgent} className="px-1.5 py-0.5 text-[11px] bg-vsc-button hover:bg-vsc-button-hover disabled:opacity-40 text-white rounded" title="Bind selected agent">+Bind</button>
         <button onClick={handleCreateAndBind} disabled={creating} className="px-1.5 py-0.5 text-[11px] bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white rounded" title="Create new agent & bind to current pane">{creating ? '...' : '+New'}</button>
         <div className="flex-1" />
