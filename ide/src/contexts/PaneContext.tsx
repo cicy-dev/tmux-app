@@ -124,7 +124,7 @@ export const PaneProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Tabs
   const [activeTab, setActiveTab] = useState<string>(() => {
     const saved = localStorage.getItem(`${CurrentPaneId}_activeTab`);
-    return saved || 'Code';
+    return saved || 'Agents';
   });
   const [agentsSubTab, setAgentsSubTab] = useState<'All' | 'Binded'>('All');
   const [previewTab, setPreviewTab] = useState<number>(() => {
