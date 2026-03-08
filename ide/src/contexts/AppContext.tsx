@@ -114,6 +114,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           title: paneConfig[key]?.title || p.title,
           created_at: paneConfig[key]?.created_at || null,
         }));
+        if (panesArray.length === 0) return;
         setAllPanes(prev => {
           const prevJson = JSON.stringify(prev);
           const nextJson = JSON.stringify(panesArray);
