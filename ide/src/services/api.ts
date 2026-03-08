@@ -17,7 +17,7 @@ const api = {
 
   // Panes
   getPanes:         ()                                     => http.get('/api/tmux/panes'),
-  getAllStatus:      ()                                     => http.get('/api/tmux/status/all'),
+  getAllStatus:      ()                                     => http.get('/api/tmux/status'),
   getPane:          (id: string)                           => http.get(`/api/tmux/panes/${encodeURIComponent(id)}`),
   updatePane:       (id: string, data: any)                => http.patch(`/api/tmux/panes/${encodeURIComponent(id)}`, data),
   deletePane:       (id: string)                           => http.delete(`/api/tmux/panes/${encodeURIComponent(id)}`),

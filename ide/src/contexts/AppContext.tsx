@@ -114,7 +114,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           title: paneConfig[key]?.title || p.title,
           created_at: paneConfig[key]?.created_at || null,
         }));
-        setAllPanes(panesArray);
+        setAllPanes(prev => {
+          const prevJson = JSON.stringify(prev);
+          const nextJson = JSON.stringify(panesArray);
+          return prevJson === nextJson ? prev : panesArray;
+        });
         setLoading(false);
         
         // Auto-select first pane if none selected

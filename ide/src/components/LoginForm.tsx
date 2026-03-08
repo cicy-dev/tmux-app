@@ -32,7 +32,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           <div className="w-16 h-16 bg-vsc-button rounded-full flex items-center justify-center mb-4">
             <Lock size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">VNC Proxy</h1>
+          <h1 className="text-2xl font-bold text-white">CiCy IDE</h1>
           <p className="text-vsc-text-secondary text-sm mt-2">Enter your access token</p>
         </div>
 

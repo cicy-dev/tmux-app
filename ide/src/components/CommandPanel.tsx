@@ -143,10 +143,10 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
 
   useEffect(() => {
     const saved = localStorage.getItem(CMD_HISTORY_KEY);
-    if (saved) {
-      try { setCommandHistory(JSON.parse(saved)); } catch {}
-    }
-  }, [paneTarget]);
+    try { setCommandHistory(saved ? JSON.parse(saved) : []); } catch { setCommandHistory([]); }
+    setHistoryIndex(-1);
+    setTempDraft('');
+  }, [selectedPane]);
 
   const saveCommandHistory = (history: string[]) => {
     localStorage.setItem(CMD_HISTORY_KEY, JSON.stringify(history));
@@ -159,10 +159,8 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
 
   useEffect(() => {
     const savedDraft = localStorage.getItem(DRAFT_KEY);
-    if (savedDraft) {
-      setPromptText(savedDraft);
-    }
-  }, [paneTarget]);
+    setPromptText(savedDraft || '');
+  }, [selectedPane]);
 
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
