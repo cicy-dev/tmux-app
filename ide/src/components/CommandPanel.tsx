@@ -321,6 +321,38 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
             >
               <History size={14} />
             </button>
+            <button
+              type="button"
+              onClick={() => apiService.sendKeys(selectedPane, 'C-c')}
+              className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
+              title="Send Ctrl+C"
+            >
+              ^c
+            </button>
+            <button
+              type="button"
+              onClick={() => sendCommandToTmux('/model', selectedPane)}
+              className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
+              title="Send /model"
+            >
+              /model
+            </button>
+            <button
+              type="button"
+              onClick={() => sendCommandToTmux('/compact', selectedPane)}
+              className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
+              title="Send /compact"
+            >
+              /compact
+            </button>
+            <button
+              type="button"
+              onClick={() => sendCommandToTmux('/tools trust-all', selectedPane)}
+              className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
+              title="Send /tools trust-all"
+            >
+              /trust-all
+            </button>
           </>
         }
         initialPosition={panelPosition}

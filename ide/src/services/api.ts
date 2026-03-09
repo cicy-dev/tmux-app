@@ -40,9 +40,7 @@ const api = {
   unbindAgent:      (agentId: number)                      => http.delete(`/api/agents/unbind/${agentId}`),
 
   // TTYD
-  getTtydConfig:    (id: string)                           => http.get(`/api/ttyd/config/${encodeURIComponent(id)}`),
-  updateTtydConfig: (id: string, data: any)                => http.put(`/api/ttyd/config/${encodeURIComponent(id)}`, data),
-  getTtydStatus:    (id: string)                           => http.get(`/api/ttyd/status/${encodeURIComponent(id)}`),
+  getTtydStatus:    (id: string)                           => http.get(`/api/tmux/ttyd/status/${encodeURIComponent(id)}`),
 
   // Utils
   correctEnglish:   (text: string)                         => http.post('/api/correctEnglish', { text }),
