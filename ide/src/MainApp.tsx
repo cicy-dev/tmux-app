@@ -13,6 +13,7 @@ import { useApp } from './contexts/AppContext';
 import LeftSidePanel from './components/LeftSidePanel';
 import RightSidePanel from './components/RightSidePanel';
 import MainMiddlePanel from './components/MainMiddlePanel';
+import Drawer from './components/Drawer';
 
 const App: React.FC = () => {
   const { closeDialog, activeDialog } = useDialog();
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   } = usePane();
   const { isListening, voiceMode, startRecording, stopRecording } = useVoice();
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [boundAgents, setBoundAgents] = useState<string[]>([]);
   const [floatWindow, setFloatWindow] = useState<{paneId: string, x: number, y: number, w: number, h: number} | null>(null);
   const [floatDragging, setFloatDragging] = useState(false);
@@ -139,7 +141,7 @@ const App: React.FC = () => {
         {/* Global drag overlay to prevent iframes from stealing events */}
         {(isDragging || floatDragging) && <div className="fixed inset-0 z-[9999] cursor-col-resize" />}
 
-        <MainMiddlePanel ttydWidth={rightCollapsed ? window.innerWidth - leftW : ttydWidth} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} leftWidth={leftW} leftCollapsed={leftCollapsed} rightCollapsed={rightCollapsed} onToggleLeft={() => setLeftCollapsed(!leftCollapsed)} onToggleRight={() => setRightCollapsed(!rightCollapsed)} />
+        <MainMiddlePanel ttydWidth={rightCollapsed ? window.innerWidth - leftW : ttydWidth} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} leftWidth={leftW} leftCollapsed={leftCollapsed} rightCollapsed={rightCollapsed} onToggleLeft={() => setLeftCollapsed(!leftCollapsed)} onToggleRight={() => setRightCollapsed(!rightCollapsed)} drawerOpen={drawerOpen} onToggleDrawer={() => setDrawerOpen(!drawerOpen)} />
       </div>
 
       {floatWindow && token && (
@@ -166,6 +168,8 @@ const App: React.FC = () => {
         />
         </div></div>
       )}
+
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       {toast && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-4 py-2.5 text-white text-sm font-medium rounded-lg shadow-lg transition-all ${toast?.startsWith('Failed') || toast?.startsWith('Error') ? 'bg-red-500/90' : 'bg-emerald-500/90'}`} style={{zIndex: 999999999}}>{toast}</div>

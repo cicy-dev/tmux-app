@@ -335,7 +335,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
               title="Send /model"
             >
-              /model
+              /m
             </button>
             <button
               type="button"
@@ -343,7 +343,7 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
               title="Send /compact"
             >
-              /compact
+              /c
             </button>
             <button
               type="button"
@@ -351,7 +351,23 @@ export const CommandPanel = forwardRef<CommandPanelHandle, CommandPanelProps>(({
               className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
               title="Send /tools trust-all"
             >
-              /trust-all
+              /ta
+            </button>
+            <button
+              type="button"
+              onClick={() => sendCommandToTmux('k chat -a', selectedPane)}
+              className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
+              title="Send k chat -a"
+            >
+              /ka
+            </button>
+            <button
+              type="button"
+              onClick={() => sendCommandToTmux('/chat resume', selectedPane)}
+              className="px-2 py-0.5 text-xs rounded bg-vsc-bg-hover text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active"
+              title="Send /chat resume"
+            >
+              /cr
             </button>
           </>
         }
