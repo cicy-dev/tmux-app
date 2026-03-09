@@ -87,14 +87,9 @@ const MainMiddlePanel: React.FC<MainMiddlePanelProps> = ({ ttydWidth, boundAgent
             <div className={`w-2 h-2 rounded-full ${networkStatus === 'excellent' ? 'bg-green-500' : networkStatus === 'good' ? 'bg-yellow-500' : networkStatus === 'poor' ? 'bg-orange-500' : 'bg-red-500'}`}></div>
             <span>{networkLatency}ms</span>
           </div>
-          <button onClick={onToggleRight} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active" title={rightCollapsed ? 'Show panel' : 'Hide panel'}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-          </button>
-          {onToggleDrawer && (
-            <button onClick={onToggleDrawer} className={`p-1 rounded hover:bg-vsc-bg-active ${drawerOpen ? 'text-vsc-accent' : 'text-vsc-text-secondary hover:text-vsc-text'}`} title="Toggle drawer">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <button onClick={onToggleDrawer} className={`p-1 rounded hover:bg-vsc-bg-active ${drawerOpen ? 'text-vsc-accent' : 'text-vsc-text-secondary hover:text-vsc-text'}`} title="Toggle drawer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
             </button>
-          )}
           <div className="relative">
             <button 
               type="button" 

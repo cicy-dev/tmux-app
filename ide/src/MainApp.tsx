@@ -116,32 +116,10 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {!rightCollapsed && (
-          <RightSidePanel ttydWidth={ttydWidth} isDragging={isDragging} setBoundAgents={setBoundAgents} leftWidth={leftW} />
-        )}
-
-        {!rightCollapsed && (
-          <div id="drag" 
-            className="absolute inset-y-0 bg-transparent hover:bg-vsc-accent cursor-col-resize z-10"
-            style={{left: `calc(${leftW}px + ${ttydWidth}px - 2px)`, width: '5px'}}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-              const startX = e.clientX;
-              const startW = ttydWidth;
-              let curW = startW;
-              const onMouseMove = (ev: MouseEvent) => { curW = Math.max(200, Math.min(window.innerWidth - leftW - 200, startW + ev.clientX - startX)); setTtydWidth(curW); };
-              const onMouseUp = () => { setIsDragging(false); localStorage.setItem(`${displayPaneId}_ttydWidth`, String(curW)); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
-              document.addEventListener('mousemove', onMouseMove);
-              document.addEventListener('mouseup', onMouseUp);
-            }}
-          ></div>
-        )}
-
         {/* Global drag overlay to prevent iframes from stealing events */}
         {(isDragging || floatDragging) && <div className="fixed inset-0 z-[9999] cursor-col-resize" />}
 
-        <MainMiddlePanel ttydWidth={rightCollapsed ? window.innerWidth - leftW : ttydWidth} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} leftWidth={leftW} leftCollapsed={leftCollapsed} rightCollapsed={rightCollapsed} onToggleLeft={() => setLeftCollapsed(!leftCollapsed)} onToggleRight={() => setRightCollapsed(!rightCollapsed)} drawerOpen={drawerOpen} onToggleDrawer={() => setDrawerOpen(!drawerOpen)} />
+        <MainMiddlePanel ttydWidth={window.innerWidth - leftW} boundAgents={boundAgents} mainIframeRef={mainIframeRef} commandPanelRef={commandPanelRef} pinnedPanes={pinnedPanes} setPinnedPanes={setPinnedPanes} leftWidth={leftW} leftCollapsed={leftCollapsed} rightCollapsed={rightCollapsed} onToggleLeft={() => setLeftCollapsed(!leftCollapsed)} onToggleRight={() => setRightCollapsed(!rightCollapsed)} drawerOpen={drawerOpen} onToggleDrawer={() => setDrawerOpen(!drawerOpen)} />
       </div>
 
       {floatWindow && token && (
@@ -169,7 +147,9 @@ const App: React.FC = () => {
         </div></div>
       )}
 
-      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <RightSidePanel ttydWidth={0} isDragging={false} setBoundAgents={setBoundAgents} leftWidth={0} onCloseDrawer={() => setDrawerOpen(false)} />
+      </Drawer>
 
       {toast && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-4 py-2.5 text-white text-sm font-medium rounded-lg shadow-lg transition-all ${toast?.startsWith('Failed') || toast?.startsWith('Error') ? 'bg-red-500/90' : 'bg-emerald-500/90'}`} style={{zIndex: 999999999}}>{toast}</div>

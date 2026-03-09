@@ -13,9 +13,10 @@ interface RightSidePanelProps {
   isDragging: boolean;
   setBoundAgents: (agents: string[]) => void;
   leftWidth: number;
+  onCloseDrawer?: () => void;
 }
 
-const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, setBoundAgents, leftWidth }) => {
+const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, setBoundAgents, leftWidth, onCloseDrawer }) => {
   const { paneDetail, api, setPaneDetail, updatePane, globalVar, loadGlobalVar, updateGlobalVar } = useApp();
   const { displayPaneId, token, hasPermission, activeTab, setActiveTab, previewTab, setPreviewTab, toast, setToast, isInteracting } = usePane();
 
@@ -97,8 +98,13 @@ const RightSidePanel: React.FC<RightSidePanelProps> = ({ ttydWidth, isDragging, 
   }, [paneDetail]);
 
   return (
-    <div id="right-side" className="absolute inset-0 bg-vsc-bg" style={{left: `calc(${leftWidth}px + ${ttydWidth}px)`, width: `calc(100vw - ${leftWidth}px - ${ttydWidth}px - 4px)`}}>
+    <div id="right-side" className="w-full h-full bg-vsc-bg">
       <div id="right-side-top" className="absolute top-0 left-0 right-0 h-10 bg-vsc-bg-titlebar border-b border-vsc-border flex items-center gap-1 px-2 z-10">
+        {onCloseDrawer && (
+          <button onClick={onCloseDrawer} className="p-1 rounded text-vsc-text-secondary hover:text-vsc-text hover:bg-vsc-bg-active" title="Close drawer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+        )}
         {([ 'Agents', 'Code', 'Prompt', 'Preview', 'Password', 'Settings'] as const).map(tab => (
           <button
             key={tab}

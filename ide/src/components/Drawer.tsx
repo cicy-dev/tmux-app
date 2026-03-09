@@ -30,10 +30,10 @@ const Drawer: React.FC<{ open: boolean; onClose: () => void; children?: React.Re
 
   return (
     <>
-      {open && <div className="fixed inset-0 bg-black/30" style={{zIndex: 99999}} onClick={onClose} />}
       {dragging && <div className="fixed inset-0 cursor-col-resize" style={{zIndex: 999999}} />}
       <div
-        className="fixed top-0 right-0 bottom-0 transition-transform duration-300"
+        id="drawer-right"
+        className="fixed top-0 right-0 bottom-0 transition-transform duration-300 border-l border-vsc-border"
         style={{ width, transform: open ? 'translateX(0)' : 'translateX(100%)', zIndex: 100000 }}
       >
         <div
@@ -41,7 +41,7 @@ const Drawer: React.FC<{ open: boolean; onClose: () => void; children?: React.Re
           onMouseDown={onDragStart}
         />
         <div className="w-full h-full overflow-hidden">
-          {children || <div className="w-full h-full bg-red-500" />}
+          {children || <div className="w-full h-full bg-vsc-bg" />}
         </div>
       </div>
     </>
